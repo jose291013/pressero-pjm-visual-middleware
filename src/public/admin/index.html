@@ -65,21 +65,42 @@
             <span>Groupes</span>
             <strong id="metricGroups">0</strong>
           </article>
-          <article class="metric metric-amber">
-            <span>Mappings</span>
-            <strong id="metricMappings">0</strong>
-          </article>
           <article class="metric metric-slate">
-            <span>Choix</span>
-            <strong id="metricChoices">0</strong>
+            <span>Categories</span>
+            <strong id="metricCategories">0</strong>
           </article>
+        </section>
+
+        <section class="filter-bar" aria-label="Filtres catalogue">
+          <label>
+            <span>Organisation</span>
+            <select id="organizationFilter">
+              <option value="">Toutes</option>
+            </select>
+          </label>
+          <label>
+            <span>Categorie</span>
+            <select id="categoryFilter">
+              <option value="">Toutes</option>
+            </select>
+          </label>
+          <label>
+            <span>Groupe</span>
+            <select id="priceGroupFilter">
+              <option value="">Tous</option>
+            </select>
+          </label>
+          <label class="filter-search">
+            <span>Recherche</span>
+            <input id="engineSearch" type="search" placeholder="Nom ou ID PJM" aria-label="Filtrer les moteurs">
+          </label>
         </section>
 
         <section class="workspace">
           <div class="engine-list-panel">
             <div class="panel-heading">
               <h2>Moteurs</h2>
-              <input id="engineSearch" type="search" placeholder="Filtrer" aria-label="Filtrer les moteurs">
+              <span class="panel-count" id="engineCountLabel">0</span>
             </div>
             <div class="table-wrap">
               <table>

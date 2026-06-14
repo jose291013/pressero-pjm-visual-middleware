@@ -1,5 +1,6 @@
 const state = {
   engines: [],
+  organizations: [],
   selectedEngineId: null
 };
 
@@ -11,8 +12,11 @@ const els = {
   tableBody: document.getElementById("engineTableBody"),
   metricEngines: document.getElementById("metricEngines"),
   metricGroups: document.getElementById("metricGroups"),
-  metricMappings: document.getElementById("metricMappings"),
-  metricChoices: document.getElementById("metricChoices"),
+  metricCategories: document.getElementById("metricCategories"),
+  organizationFilter: document.getElementById("organizationFilter"),
+  categoryFilter: document.getElementById("categoryFilter"),
+  priceGroupFilter: document.getElementById("priceGroupFilter"),
+  engineCountLabel: document.getElementById("engineCountLabel"),
   detailTitle: document.getElementById("detailTitle"),
   detailStatus: document.getElementById("detailStatus"),
   detailPjmId: document.getElementById("detailPjmId"),
@@ -97,22 +101,107 @@ function setBusyButtons(isBusy) {
 function renderSummary(summary) {
   setMetric(els.metricEngines, summary.priceEngines);
   setMetric(els.metricGroups, summary.priceGroups);
-  setMetric(els.metricMappings, summary.enginePriceGroupMappings);
-  setMetric(els.metricChoices, summary.optionChoices);
+  setMetric(els.metricCategories, summary.productCategories);
+}
+
+function uniqueOptions(items) {
+  return Array.from(items.values()).sort((left, right) => {
+    return left.label.localeCompare(right.label, "fr", { sensitivity: "base" });
+  });
+}
+
+function renderSelectOptions(select, options, allLabel) {
+  const currentValue = select.value;
+  select.innerHTML = `<option value="">${html(allLabel)}</option>`;
+
+  for (const option of options) {
+    const item = document.createElement("option");
+    item.value = option.value;
+    item.textContent = option.label;
+    select.appendChild(item);
+  }
+
+  if (Array.from(select.options).some((option) => option.value === currentValue)) {
+    select.value = currentValue;
+  }
+}
+
+function renderFilters() {
+  const categories = new Map();
+  const priceGroups = new Map();
+
+  for (const engine of state.engines) {
+    if (engine.productCategory) {
+      categories.set(engine.productCategory.id, {
+        value: engine.productCategory.id,
+        label: engine.productCategory.name
+      });
+    }
+
+    for (const mapping of engine.priceGroupMappings ?? []) {
+      const priceGroup = mapping.priceGroup;
+      if (!priceGroup) continue;
+      priceGroups.set(priceGroup.id, {
+        value: priceGroup.id,
+        label: priceGroup.name
+      });
+    }
+  }
+
+  renderSelectOptions(
+    els.organizationFilter,
+    state.organizations.map((organization) => ({
+      value: organization.clientId,
+      label: organization.name || organization.clientId
+    })),
+    "Toutes"
+  );
+  renderSelectOptions(els.categoryFilter, uniqueOptions(categories), "Toutes");
+  renderSelectOptions(els.priceGroupFilter, uniqueOptions(priceGroups), "Tous");
+}
+
+function engineMatchesFilters(engine) {
+  const query = els.search.value.trim().toLowerCase();
+  const organizationId = els.organizationFilter.value;
+  const categoryId = els.categoryFilter.value;
+  const priceGroupId = els.priceGroupFilter.value;
+
+  if (query && !`${engine.name} ${engine.pjmId}`.toLowerCase().includes(query)) {
+    return false;
+  }
+
+  if (categoryId && engine.productCategory?.id !== categoryId) {
+    return false;
+  }
+
+  if (
+    priceGroupId &&
+    !(engine.priceGroupMappings ?? []).some((mapping) => {
+      return mapping.priceGroup?.id === priceGroupId;
+    })
+  ) {
+    return false;
+  }
+
+  if (organizationId) {
+    const organization = state.organizations.find((item) => item.clientId === organizationId);
+    const priceEngineIds = organization?.priceEngineIds ?? [];
+    if (priceEngineIds.length && !priceEngineIds.includes(engine.id)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function filteredEngines() {
-  const query = els.search.value.trim().toLowerCase();
-  if (!query) return state.engines;
-
-  return state.engines.filter((engine) => {
-    return `${engine.name} ${engine.pjmId}`.toLowerCase().includes(query);
-  });
+  return state.engines.filter(engineMatchesFilters);
 }
 
 function renderEngineRows() {
   const engines = filteredEngines();
   els.tableBody.innerHTML = "";
+  els.engineCountLabel.textContent = `${engines.length.toLocaleString("fr-FR")} / ${state.engines.length.toLocaleString("fr-FR")}`;
 
   if (!engines.length) {
     const row = document.createElement("tr");
@@ -143,6 +232,25 @@ function renderEngineRows() {
     });
     els.tableBody.appendChild(row);
   }
+}
+
+function applyFilters() {
+  const engines = filteredEngines();
+  const selectedIsVisible = engines.some((engine) => engine.id === state.selectedEngineId);
+
+  if (selectedIsVisible) {
+    renderEngineRows();
+    return;
+  }
+
+  if (engines[0]) {
+    selectEngine(engines[0].id);
+    return;
+  }
+
+  state.selectedEngineId = null;
+  renderEngineRows();
+  renderEmptyDetail();
 }
 
 function renderEmptyDetail() {
@@ -218,13 +326,16 @@ async function loadDashboard() {
   els.detailStatus.textContent = "Chargement";
 
   try {
-    const [summaryResponse, enginesResponse] = await Promise.all([
+    const [summaryResponse, enginesResponse, organizationsResponse] = await Promise.all([
       getJson("/pjm-sync/admin/summary"),
-      getJson("/pjm-sync/admin/price-engines")
+      getJson("/pjm-sync/admin/price-engines"),
+      getJson("/pjm-sync/admin/organizations")
     ]);
 
     renderSummary(summaryResponse.data);
     state.engines = enginesResponse.data ?? [];
+    state.organizations = organizationsResponse.data ?? [];
+    renderFilters();
 
     if (!state.selectedEngineId && state.engines[0]) {
       state.selectedEngineId = state.engines[0].id;
@@ -271,6 +382,9 @@ async function runPjmUpdate() {
 
 els.syncButton.addEventListener("click", runPjmUpdate);
 els.refreshButton.addEventListener("click", loadDashboard);
-els.search.addEventListener("input", renderEngineRows);
+els.search.addEventListener("input", applyFilters);
+els.organizationFilter.addEventListener("change", applyFilters);
+els.categoryFilter.addEventListener("change", applyFilters);
+els.priceGroupFilter.addEventListener("change", applyFilters);
 
 loadDashboard();

@@ -4,6 +4,7 @@ import {
   getPjmSyncAdminPriceEngineMappings,
   getPjmSyncAdminPriceEngineOptions,
   getPjmSyncAdminPriceEngines,
+  getPjmSyncAdminOrganizations,
   getPjmSyncAdminSummary,
   getPjmPriceEngineOptions,
   getPjmPriceEngines,
@@ -18,6 +19,7 @@ export const pjmSyncRouter = Router();
 pjmSyncRouter.get("/", getPjmSyncStatus);
 pjmSyncRouter.get("/admin/summary", getPjmSyncAdminSummary);
 pjmSyncRouter.post("/admin/sync", postPjmSyncAdminCatalogSync);
+pjmSyncRouter.get("/admin/organizations", getPjmSyncAdminOrganizations);
 pjmSyncRouter.get("/admin/price-engines", getPjmSyncAdminPriceEngines);
 pjmSyncRouter.get(
   "/admin/price-engines/:id/mappings",

@@ -57,6 +57,7 @@ export type PjmCatalogSyncResult = {
 export type PjmSyncAdminSummary = {
   priceEngines: number;
   priceGroups: number;
+  productCategories: number;
   enginePriceGroupMappings: number;
   options: number;
   optionChoices: number;

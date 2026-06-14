@@ -5,6 +5,7 @@ import {
   getPjmSyncAdminSummary as getPjmSyncAdminSummaryFromStore,
   listPjmSyncAdminEngineMappings as listPjmSyncAdminEngineMappingsFromStore,
   listPjmSyncAdminEngineOptions as listPjmSyncAdminEngineOptionsFromStore,
+  listPjmSyncAdminOrganizations as listPjmSyncAdminOrganizationsFromStore,
   listPjmSyncAdminPriceEngines as listPjmSyncAdminPriceEnginesFromStore
 } from "./pjmSyncAdmin.service.js";
 import {
@@ -79,6 +80,14 @@ export async function getPjmSyncAdminPriceEngines(
 ) {
   const priceEngines = await listPjmSyncAdminPriceEnginesFromStore();
   res.status(200).json({ data: priceEngines });
+}
+
+export async function getPjmSyncAdminOrganizations(
+  _req: Request,
+  res: Response
+) {
+  const organizations = await listPjmSyncAdminOrganizationsFromStore();
+  res.status(200).json({ data: organizations });
 }
 
 export async function getPjmSyncAdminPriceEngineDetail(

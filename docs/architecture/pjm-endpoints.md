@@ -64,6 +64,8 @@ Some PJM installations can wrap the same array in a response object. The sync no
 }
 ```
 
+The live response inspected for Sprint 9 used top-level keys `Total` and `Data`. Each engine item exposed `Id`, `Name` and `Mappings`; no product category field was present in this endpoint response.
+
 Important model consequence: one product engine can have multiple price-group mappings. The middleware stores those mappings in `PjmEnginePriceGroupMapping`.
 
 ## Engine Options

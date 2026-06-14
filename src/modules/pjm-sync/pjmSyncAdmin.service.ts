@@ -27,9 +27,11 @@ export async function getPjmSyncAdminSummary(): Promise<PjmSyncAdminSummary> {
   const [
     priceEngines,
     priceGroups,
+    productCategories,
     enginePriceGroupMappings,
     options,
     optionChoices,
+    latestCategory,
     latestEngine,
     latestPriceGroup,
     latestMapping,
@@ -38,9 +40,11 @@ export async function getPjmSyncAdminSummary(): Promise<PjmSyncAdminSummary> {
   ] = await Promise.all([
     prisma.pjmPriceEngine.count(),
     prisma.pjmPriceGroup.count(),
+    prisma.pjmProductCategory.count(),
     prisma.pjmEnginePriceGroupMapping.count(),
     prisma.pjmOption.count(),
     prisma.pjmOptionChoice.count(),
+    findLatestUpdatedAt(prisma.pjmProductCategory),
     findLatestUpdatedAt(prisma.pjmPriceEngine),
     findLatestUpdatedAt(prisma.pjmPriceGroup),
     findLatestUpdatedAt(prisma.pjmEnginePriceGroupMapping),
@@ -51,10 +55,12 @@ export async function getPjmSyncAdminSummary(): Promise<PjmSyncAdminSummary> {
   return {
     priceEngines,
     priceGroups,
+    productCategories,
     enginePriceGroupMappings,
     options,
     optionChoices,
     latestUpdatedAt: maxDate([
+      latestCategory?.updatedAt,
       latestEngine?.updatedAt,
       latestPriceGroup?.updatedAt,
       latestMapping?.updatedAt,
@@ -83,6 +89,42 @@ export async function listPjmSyncAdminPriceEngines() {
     },
     orderBy: [{ name: "asc" }]
   });
+}
+
+export async function listPjmSyncAdminOrganizations() {
+  const profiles = await prisma.negotiatedPriceProfile.findMany({
+    select: {
+      clientId: true,
+      name: true,
+      priceEngineId: true
+    },
+    orderBy: [{ clientId: "asc" }, { name: "asc" }]
+  });
+
+  const organizations = new Map<
+    string,
+    { clientId: string; name: string; priceEngineIds: Set<string> }
+  >();
+
+  for (const profile of profiles) {
+    const existing = organizations.get(profile.clientId) ?? {
+      clientId: profile.clientId,
+      name: profile.name,
+      priceEngineIds: new Set<string>()
+    };
+
+    if (profile.priceEngineId) {
+      existing.priceEngineIds.add(profile.priceEngineId);
+    }
+
+    organizations.set(profile.clientId, existing);
+  }
+
+  return Array.from(organizations.values()).map((organization) => ({
+    clientId: organization.clientId,
+    name: organization.name,
+    priceEngineIds: Array.from(organization.priceEngineIds)
+  }));
 }
 
 export async function getPjmSyncAdminPriceEngine(engineIdOrPjmId: string) {

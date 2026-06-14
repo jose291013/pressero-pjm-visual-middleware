@@ -10,7 +10,7 @@ The API is read-only in this sprint. It does not trigger PJM synchronization, do
 GET /pjm-sync/admin/summary
 ```
 
-Returns counts for engines, price groups, mappings, options and choices, plus the latest update timestamp found in the synced catalog tables.
+Returns counts for engines, price groups, product categories, mappings, options and choices, plus the latest update timestamp found in the synced catalog tables.
 
 ## Price Engines
 
@@ -19,6 +19,14 @@ GET /pjm-sync/admin/price-engines
 ```
 
 Returns engines with product category, price group mappings and counts.
+
+## Organizations
+
+```http
+GET /pjm-sync/admin/organizations
+```
+
+Returns organization criteria derived from negotiated price profiles. This prepares the catalog UI for the future negotiated-prices workflow without changing PJM sync data.
 
 ```http
 GET /pjm-sync/admin/price-engines/:id
@@ -95,3 +103,13 @@ Successful response:
 ```
 
 If PJM credentials are missing or PJM rejects the request, the endpoint returns a JSON error that the admin UI can display.
+
+## Sprint 9 Catalog Organization
+
+The admin UI now shows three main KPI cards:
+
+- engines;
+- price groups;
+- product categories.
+
+The engine list can be filtered by search text, product category when available, price group and organization. The real PJM `productEngines/list` response inspected during this sprint exposes `Id`, `Name` and `Mappings`, but no product category field, so categories are only shown when they already exist in the local database.
