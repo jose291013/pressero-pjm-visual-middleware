@@ -36,6 +36,10 @@ assert.equal(packageJson.scripts["sync:pjm"], "tsx src/modules/pjm-sync/pjmSync.
 const catalogService = await readText("src/modules/pjm-sync/pjmSyncCatalog.service.ts");
 assert.match(catalogService, /export async function syncPjmCatalog/);
 assert.match(catalogService, /client\.listProductEngines\(\)/);
+assert.match(catalogService, /readPjmProductEnginesResponse/);
+assert.match(catalogService, /ProductEngines/);
+assert.match(catalogService, /Data/);
+assert.match(catalogService, /Items/);
 assert.match(catalogService, /client\.getEngineOptions\(optionProductId\)/);
 assert.match(catalogService, /prisma\.pjmPriceEngine\.upsert/);
 assert.match(catalogService, /prisma\.pjmPriceGroup\.upsert/);

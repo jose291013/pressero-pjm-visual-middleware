@@ -54,6 +54,7 @@ const requiredContracts = [
   "PjmAuthenticateResponse",
   "PjmProductEngineListMappingResponse",
   "PjmProductEngineListItemResponse",
+  "PjmProductEngineListEnvelopeResponse",
   "PjmProductEngineListResponse",
   "PjmEngineOperation",
   "PjmEngineRequest",
@@ -67,6 +68,8 @@ for (const contract of requiredContracts) {
 
 assert.match(contracts, /EnginePriceGroupIntegrationId:\s*string/);
 assert.match(contracts, /PriceGroupName:\s*string/);
+assert.match(contracts, /ProductEngines\?:\s*PjmProductEngineListItemResponse\[\]/);
+assert.match(contracts, /Data\?:\s*PjmProductEngineListItemResponse\[\]\s*\|\s*PjmProductEngineListEnvelopeResponse/);
 assert.match(contracts, /Operation:\s*PjmEngineOperation/);
 assert.match(contracts, /Product:\s*string/);
 assert.match(contracts, /Price\?:\s*number/);

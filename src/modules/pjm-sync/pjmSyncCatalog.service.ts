@@ -3,7 +3,9 @@ import type { PjmClient } from "./pjmClient.js";
 import type {
   PjmEngineChoiceResponse,
   PjmEngineOptionResponse,
-  PjmEngineOptionsResponse
+  PjmEngineOptionsResponse,
+  PjmProductEngineListItemResponse,
+  PjmProductEngineListResponse
 } from "./pjmContracts.types.js";
 import type { PjmCatalogSyncResult } from "./pjmSync.types.js";
 
@@ -24,6 +26,21 @@ type NormalizedEngineOption = {
   isVisual: boolean;
   choices: NormalizedOptionChoice[];
 };
+
+const PRODUCT_ENGINE_ARRAY_KEYS = [
+  "ProductEngines",
+  "productEngines",
+  "Engines",
+  "engines",
+  "Items",
+  "items",
+  "Data",
+  "data",
+  "Result",
+  "result",
+  "Results",
+  "results"
+];
 
 export type PjmCatalogSyncClient = Pick<
   PjmClient,
@@ -48,6 +65,46 @@ export function buildPriceGroupPjmId(priceGroupName: string): string {
 function stringifyValue(value: unknown): string {
   if (value === null || value === undefined) return "";
   return String(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function findProductEngineArray(
+  value: unknown,
+  depth = 0
+): PjmProductEngineListItemResponse[] | null {
+  if (Array.isArray(value)) return value as PjmProductEngineListItemResponse[];
+  if (!isRecord(value) || depth > 4) return null;
+
+  for (const key of PRODUCT_ENGINE_ARRAY_KEYS) {
+    const candidate = value[key];
+    if (Array.isArray(candidate)) {
+      return candidate as PjmProductEngineListItemResponse[];
+    }
+  }
+
+  for (const key of PRODUCT_ENGINE_ARRAY_KEYS) {
+    const nested = findProductEngineArray(value[key], depth + 1);
+    if (nested !== null) return nested;
+  }
+
+  return null;
+}
+
+export function readPjmProductEnginesResponse(
+  response: PjmProductEngineListResponse
+): PjmProductEngineListItemResponse[] {
+  const engines = findProductEngineArray(response);
+
+  if (engines === null) {
+    throw new Error(
+      "PJM productEngines/list response did not include an engine array."
+    );
+  }
+
+  return engines;
 }
 
 function readEngineOptions(
@@ -123,7 +180,9 @@ export async function syncPjmCatalog(
     warnings: []
   };
 
-  const engines = await client.listProductEngines();
+  const engines = readPjmProductEnginesResponse(
+    await client.listProductEngines()
+  );
 
   for (const engine of engines) {
     const priceEngine = await prisma.pjmPriceEngine.upsert({

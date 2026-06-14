@@ -50,6 +50,20 @@ Response shape:
 ]
 ```
 
+Some PJM installations can wrap the same array in a response object. The sync normalizer accepts common wrappers such as:
+
+```json
+{
+  "Data": [
+    {
+      "Id": "ad4c3730-c501-4f74-87b2-bc01d96d0b7e",
+      "Name": "Bache format ouvert de 20 a 500 cm",
+      "Mappings": []
+    }
+  ]
+}
+```
+
 Important model consequence: one product engine can have multiple price-group mappings. The middleware stores those mappings in `PjmEnginePriceGroupMapping`.
 
 ## Engine Options

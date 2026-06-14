@@ -22,8 +22,24 @@ export type PjmProductEngineListItemResponse = {
   Mappings: PjmProductEngineListMappingResponse[];
 };
 
+export type PjmProductEngineListEnvelopeResponse = {
+  ProductEngines?: PjmProductEngineListItemResponse[];
+  productEngines?: PjmProductEngineListItemResponse[];
+  Engines?: PjmProductEngineListItemResponse[];
+  engines?: PjmProductEngineListItemResponse[];
+  Items?: PjmProductEngineListItemResponse[];
+  items?: PjmProductEngineListItemResponse[];
+  Data?: PjmProductEngineListItemResponse[] | PjmProductEngineListEnvelopeResponse;
+  data?: PjmProductEngineListItemResponse[] | PjmProductEngineListEnvelopeResponse;
+  Result?: PjmProductEngineListItemResponse[] | PjmProductEngineListEnvelopeResponse;
+  result?: PjmProductEngineListItemResponse[] | PjmProductEngineListEnvelopeResponse;
+  Results?: PjmProductEngineListItemResponse[] | PjmProductEngineListEnvelopeResponse;
+  results?: PjmProductEngineListItemResponse[] | PjmProductEngineListEnvelopeResponse;
+};
+
 export type PjmProductEngineListResponse =
-  PjmProductEngineListItemResponse[];
+  | PjmProductEngineListItemResponse[]
+  | PjmProductEngineListEnvelopeResponse;
 
 export type PjmEngineOperation = "options" | "optionsandprice";
 
