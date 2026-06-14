@@ -14,5 +14,10 @@ function readPort(value: string | undefined): number {
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: readPort(process.env.PORT),
-  databaseUrl: process.env.DATABASE_URL
+  databaseUrl: process.env.DATABASE_URL,
+  pjm: {
+    publicBaseUrl: process.env.PJM_PUBLIC_BASE_URL,
+    username: process.env.PJM_USERNAME,
+    password: process.env.PJM_PASSWORD
+  }
 };

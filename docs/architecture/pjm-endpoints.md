@@ -92,3 +92,24 @@ Payload:
 ```
 
 This call can return price, weight, quantity, attributes and sometimes updated engine options. It is a backend integration concern only. The Pressero visual script must not calculate prices itself.
+
+## Sprint 4 Client Boundary
+
+`src/modules/pjm-sync/pjmClient.ts` contains the isolated PJM HTTP client.
+
+Responsibilities:
+
+- authenticate and cache the PJM token;
+- call `productEngines/list`;
+- call `/public/engine` with `Operation: "options"`;
+- call `/public/engine` with `Operation: "optionsandprice"`;
+- expose payload builders for tests and future sync code.
+
+Non-responsibilities:
+
+- no database writes;
+- no Pressero JSON generation;
+- no admin UI;
+- no automatic PJM call at server startup.
+
+The client accepts an injectable `fetchImpl` so tests and future sync scripts can verify payloads without calling the real PJM API.

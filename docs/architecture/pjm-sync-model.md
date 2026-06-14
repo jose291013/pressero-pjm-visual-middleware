@@ -26,3 +26,7 @@ The next connector sprint should map `productEngines/list` responses into:
 - `PjmPriceEngine.name` from `Name`;
 - `PjmPriceGroup.name` from `PriceGroupName`;
 - `PjmEnginePriceGroupMapping.enginePriceGroupIntegrationId` from `EnginePriceGroupIntegrationId`.
+
+Sprint 4 adds the client boundary but still does not run a sync automatically.
+
+The `PjmClient` is a low-level integration object. Services that persist data should call it later from explicit sync scripts or endpoints, then write normalized data through Prisma.
