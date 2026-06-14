@@ -28,10 +28,37 @@ async function getJson(url) {
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    const message = await readErrorMessage(response);
+    throw new Error(message || `HTTP ${response.status}`);
   }
 
   return response.json();
+}
+
+async function readErrorMessage(response) {
+  const fallback = `HTTP ${response.status}`;
+
+  try {
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body = await response.json();
+      return summarizeError(body?.error || body?.message || fallback);
+    }
+
+    const body = await response.text();
+    const parsed = new DOMParser().parseFromString(body, "text/html");
+    const visibleText = parsed.body?.textContent || body;
+    return summarizeError(visibleText || fallback);
+  } catch (_error) {
+    return fallback;
+  }
+}
+
+function summarizeError(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 500);
 }
 
 function text(value, fallback = "-") {
