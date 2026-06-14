@@ -1,10 +1,14 @@
 const state = {
   engines: [],
   organizations: [],
-  selectedEngineId: null
+  selectedEngineId: null,
+  negotiatedEngine: null
 };
 
 const els = {
+  pageTitle: document.getElementById("pageTitle"),
+  viewLinks: document.querySelectorAll("[data-view-link]"),
+  views: document.querySelectorAll("[data-view]"),
   syncButton: document.getElementById("syncButton"),
   syncStatus: document.getElementById("syncStatus"),
   refreshButton: document.getElementById("refreshButton"),
@@ -23,7 +27,20 @@ const els = {
   detailMappingsCount: document.getElementById("detailMappingsCount"),
   detailOptionsCount: document.getElementById("detailOptionsCount"),
   mappingList: document.getElementById("mappingList"),
-  optionList: document.getElementById("optionList")
+  optionList: document.getElementById("optionList"),
+  negotiatedStatus: document.getElementById("negotiatedStatus"),
+  npClientId: document.getElementById("npClientId"),
+  npOrganizationName: document.getElementById("npOrganizationName"),
+  npEngineSelect: document.getElementById("npEngineSelect"),
+  npPriceGroupSelect: document.getElementById("npPriceGroupSelect"),
+  npQuantityTiers: document.getElementById("npQuantityTiers"),
+  npPreviewButton: document.getElementById("npPreviewButton"),
+  npOptionPicker: document.getElementById("npOptionPicker"),
+  npSelectedCount: document.getElementById("npSelectedCount"),
+  npCombinationCount: document.getElementById("npCombinationCount"),
+  npTierCount: document.getElementById("npTierCount"),
+  npColumnCount: document.getElementById("npColumnCount"),
+  npPreviewColumns: document.getElementById("npPreviewColumns")
 };
 
 async function getJson(url, init = {}) {
@@ -98,6 +115,19 @@ function setBusyButtons(isBusy) {
   els.syncButton.disabled = isBusy;
 }
 
+function setView(viewName) {
+  els.views.forEach((view) => {
+    view.classList.toggle("is-active", view.dataset.view === viewName);
+  });
+
+  els.viewLinks.forEach((link) => {
+    link.classList.toggle("is-active", link.dataset.viewLink === viewName);
+  });
+
+  els.pageTitle.textContent =
+    viewName === "negotiated-prices" ? "Prix negocies" : "Catalogue PJM";
+}
+
 function renderSummary(summary) {
   setMetric(els.metricEngines, summary.priceEngines);
   setMetric(els.metricGroups, summary.priceGroups);
@@ -158,6 +188,15 @@ function renderFilters() {
   );
   renderSelectOptions(els.categoryFilter, uniqueOptions(categories), "Toutes");
   renderSelectOptions(els.priceGroupFilter, uniqueOptions(priceGroups), "Tous");
+  renderNegotiatedEngineSelect();
+}
+
+function renderNegotiatedEngineSelect() {
+  const options = state.engines.map((engine) => ({
+    value: engine.id,
+    label: engine.name
+  }));
+  renderSelectOptions(els.npEngineSelect, options, "Choisir un moteur");
 }
 
 function engineMatchesFilters(engine) {
@@ -321,6 +360,183 @@ async function selectEngine(engineId) {
   }
 }
 
+function renderNegotiatedPriceGroups(engine) {
+  els.npPriceGroupSelect.innerHTML = '<option value="">Choisir un groupe</option>';
+
+  for (const mapping of engine?.priceGroupMappings ?? []) {
+    const item = document.createElement("option");
+    item.value = mapping.enginePriceGroupIntegrationId;
+    item.textContent = mapping.priceGroup?.name || mapping.enginePriceGroupIntegrationId;
+    els.npPriceGroupSelect.appendChild(item);
+  }
+
+  if (els.npPriceGroupSelect.options.length > 1) {
+    els.npPriceGroupSelect.selectedIndex = 1;
+  }
+}
+
+function renderNegotiatedOptions(engine) {
+  const options = engine?.options ?? [];
+  els.npOptionPicker.innerHTML = "";
+
+  if (!options.length) {
+    els.npOptionPicker.innerHTML = '<div class="empty-state">Aucune option disponible pour ce moteur.</div>';
+    updateNegotiatedSelectedCount();
+    return;
+  }
+
+  for (const option of options) {
+    const item = document.createElement("article");
+    item.className = "option-picker-item";
+
+    const choices = option.choices ?? [];
+    item.innerHTML = `
+      <strong class="option-picker-title">${html(option.displayName || option.name)}</strong>
+      <div class="choice-checks">
+        ${choices.map((choice) => `
+          <label class="choice-check">
+            <input type="checkbox"
+              data-option-id="${html(option.id)}"
+              data-option-name="${html(option.displayName || option.name)}"
+              data-option-pjm-key="${html(option.pjmId)}"
+              data-choice-id="${html(choice.id)}"
+              data-choice-name="${html(choice.name)}"
+              data-choice-value="${html(choice.value)}">
+            <span>${html(choice.name)}</span>
+          </label>
+        `).join("")}
+      </div>
+    `;
+    els.npOptionPicker.appendChild(item);
+  }
+
+  els.npOptionPicker.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+    checkbox.addEventListener("change", updateNegotiatedSelectedCount);
+  });
+  updateNegotiatedSelectedCount();
+}
+
+function readNegotiatedSelections() {
+  const selectedByOption = new Map();
+  const selected = els.npOptionPicker.querySelectorAll("input[type='checkbox']:checked");
+
+  selected.forEach((checkbox) => {
+    const optionId = checkbox.dataset.optionId;
+    const existing = selectedByOption.get(optionId) ?? {
+      optionId,
+      optionName: checkbox.dataset.optionName,
+      pjmKey: checkbox.dataset.optionPjmKey,
+      choices: []
+    };
+
+    existing.choices.push({
+      choiceId: checkbox.dataset.choiceId,
+      choiceName: checkbox.dataset.choiceName,
+      pjmValue: checkbox.dataset.choiceValue
+    });
+    selectedByOption.set(optionId, existing);
+  });
+
+  return Array.from(selectedByOption.values());
+}
+
+function updateNegotiatedSelectedCount() {
+  const selectedCount = els.npOptionPicker.querySelectorAll("input[type='checkbox']:checked").length;
+  els.npSelectedCount.textContent = `${selectedCount.toLocaleString("fr-FR")} choix`;
+}
+
+async function loadNegotiatedEngine() {
+  const engineId = els.npEngineSelect.value;
+  state.negotiatedEngine = null;
+  renderNegotiatedPriceGroups(null);
+  renderNegotiatedOptions(null);
+
+  if (!engineId) return;
+
+  els.negotiatedStatus.textContent = "Chargement";
+
+  try {
+    const response = await getJson(`/pjm-sync/admin/price-engines/${encodeURIComponent(engineId)}`);
+    state.negotiatedEngine = response.data;
+    renderNegotiatedPriceGroups(state.negotiatedEngine);
+    renderNegotiatedOptions(state.negotiatedEngine);
+    els.negotiatedStatus.textContent = "Pret";
+  } catch (error) {
+    els.negotiatedStatus.textContent = "Erreur";
+    els.npOptionPicker.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  }
+}
+
+function findSelectedPriceGroupName() {
+  const selected = els.npPriceGroupSelect.selectedOptions[0];
+  return selected ? selected.textContent : "";
+}
+
+function buildPreviewPayload() {
+  if (!els.npClientId.value.trim()) {
+    throw new Error("Organisation ID est obligatoire.");
+  }
+
+  if (!state.negotiatedEngine) {
+    throw new Error("Choisissez un moteur PJM.");
+  }
+
+  if (!els.npPriceGroupSelect.value) {
+    throw new Error("Choisissez un groupe de prix.");
+  }
+
+  const optionSelections = readNegotiatedSelections();
+  if (!optionSelections.length) {
+    throw new Error("Selectionnez au moins un choix d'option.");
+  }
+
+  return {
+    clientId: els.npClientId.value.trim(),
+    organizationName: els.npOrganizationName.value.trim(),
+    priceEngineId: state.negotiatedEngine.id,
+    priceEngineName: state.negotiatedEngine.name,
+    enginePriceGroupIntegrationId: els.npPriceGroupSelect.value,
+    priceGroupName: findSelectedPriceGroupName(),
+    quantityTiersText: els.npQuantityTiers.value,
+    optionSelections
+  };
+}
+
+function renderPreview(plan) {
+  els.npCombinationCount.textContent = `${Number(plan.combinationCount || 0).toLocaleString("fr-FR")} lignes`;
+  els.npTierCount.textContent = Number(plan.quantities?.length || 0).toLocaleString("fr-FR");
+  els.npColumnCount.textContent = Number(plan.columns?.length || 0).toLocaleString("fr-FR");
+  els.npPreviewColumns.innerHTML = "";
+
+  for (const column of plan.columns ?? []) {
+    const item = document.createElement("span");
+    item.className = "column-chip";
+    if (column.kind === "pjmPrice") item.classList.add("is-price");
+    if (column.kind === "negotiatedPrice") item.classList.add("is-negotiated");
+    item.textContent = column.label;
+    els.npPreviewColumns.appendChild(item);
+  }
+}
+
+async function previewNegotiatedPrices() {
+  els.negotiatedStatus.textContent = "Preview";
+
+  try {
+    const response = await getJson("/negotiated-prices/preview", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(buildPreviewPayload())
+    });
+    renderPreview(response.data);
+    els.negotiatedStatus.textContent = "Pret";
+  } catch (error) {
+    els.negotiatedStatus.textContent = "Erreur";
+    els.npPreviewColumns.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  }
+}
+
 async function loadDashboard() {
   setBusyButtons(true);
   els.detailStatus.textContent = "Chargement";
@@ -386,5 +602,13 @@ els.search.addEventListener("input", applyFilters);
 els.organizationFilter.addEventListener("change", applyFilters);
 els.categoryFilter.addEventListener("change", applyFilters);
 els.priceGroupFilter.addEventListener("change", applyFilters);
+els.npEngineSelect.addEventListener("change", loadNegotiatedEngine);
+els.npPreviewButton.addEventListener("click", previewNegotiatedPrices);
+els.viewLinks.forEach((link) => {
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    setView(link.dataset.viewLink);
+  });
+});
 
 loadDashboard();

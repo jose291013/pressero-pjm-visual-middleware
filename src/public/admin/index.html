@@ -23,10 +23,10 @@
           </div>
         </div>
         <nav class="nav-list">
-          <a class="is-active" href="/admin">Catalogue PJM</a>
+          <a class="is-active" href="#catalog" data-view-link="catalog">Catalogue PJM</a>
           <a aria-disabled="true">Images</a>
           <a aria-disabled="true">Mappings</a>
-          <a aria-disabled="true">Prix negocies</a>
+          <a href="#negotiated-prices" data-view-link="negotiated-prices">Prix negocies</a>
         </nav>
       </aside>
 
@@ -34,7 +34,7 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">Backoffice</p>
-            <h1>Catalogue PJM</h1>
+            <h1 id="pageTitle">Catalogue PJM</h1>
           </div>
           <div class="topbar-actions">
             <span class="sync-status" id="syncStatus" aria-live="polite"></span>
@@ -56,6 +56,7 @@
           </div>
         </header>
 
+        <section class="admin-view is-active" id="catalogView" data-view="catalog">
         <section class="summary-grid" aria-label="Resume du catalogue">
           <article class="metric metric-blue">
             <span>Moteurs</span>
@@ -150,6 +151,93 @@
               <div class="option-list" id="optionList"></div>
             </section>
           </aside>
+        </section>
+        </section>
+
+        <section class="admin-view" id="negotiatedPricesView" data-view="negotiated-prices">
+          <section class="negotiated-layout">
+            <div class="negotiated-form-panel">
+              <div class="panel-heading">
+                <h2>Preparation Excel</h2>
+                <span class="status-pill" id="negotiatedStatus">Pret</span>
+              </div>
+
+              <div class="negotiated-form">
+                <label>
+                  <span>Organisation ID</span>
+                  <input id="npClientId" type="text" placeholder="organizationIntegrationId">
+                </label>
+                <label>
+                  <span>Organisation</span>
+                  <input id="npOrganizationName" type="text" placeholder="Nom lisible">
+                </label>
+                <label>
+                  <span>Moteur PJM</span>
+                  <select id="npEngineSelect">
+                    <option value="">Choisir un moteur</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Groupe de prix</span>
+                  <select id="npPriceGroupSelect">
+                    <option value="">Choisir un groupe</option>
+                  </select>
+                </label>
+                <label class="quantity-field">
+                  <span>Paliers de quantite</span>
+                  <textarea id="npQuantityTiers" rows="8">1
+5
+25
+50
+100
+250
+500
+1000</textarea>
+                </label>
+              </div>
+
+              <div class="panel-footer">
+                <button class="action-button" id="npPreviewButton" type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 5h16"></path>
+                    <path d="M4 12h16"></path>
+                    <path d="M4 19h10"></path>
+                  </svg>
+                  Previsualiser
+                </button>
+              </div>
+            </div>
+
+            <div class="negotiated-options-panel">
+              <div class="panel-heading">
+                <h2>Options a combiner</h2>
+                <span class="panel-count" id="npSelectedCount">0 choix</span>
+              </div>
+              <div class="option-picker" id="npOptionPicker">
+                <div class="empty-state">Choisissez un moteur pour afficher ses options.</div>
+              </div>
+            </div>
+
+            <aside class="negotiated-preview-panel">
+              <div class="panel-heading">
+                <h2>Preview Excel</h2>
+                <span class="panel-count" id="npCombinationCount">0 lignes</span>
+              </div>
+              <dl class="preview-metrics">
+                <div>
+                  <dt>Paliers</dt>
+                  <dd id="npTierCount">0</dd>
+                </div>
+                <div>
+                  <dt>Colonnes</dt>
+                  <dd id="npColumnCount">0</dd>
+                </div>
+              </dl>
+              <div class="preview-columns" id="npPreviewColumns">
+                <div class="empty-state">La preview affichera les colonnes Excel attendues.</div>
+              </div>
+            </aside>
+          </section>
         </section>
       </main>
     </div>

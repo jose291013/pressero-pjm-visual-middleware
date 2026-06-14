@@ -113,3 +113,17 @@ The admin UI now shows three main KPI cards:
 - product categories.
 
 The engine list can be filtered by search text, product category when available, price group and organization. The real PJM `productEngines/list` response inspected during this sprint exposes `Id`, `Name` and `Mappings`, but no product category field, so categories are only shown when they already exist in the local database.
+
+## Sprint 11 Negotiated Prices Preview
+
+The admin UI now includes a `Prix negocies` view.
+
+It uses the existing catalog endpoints to select a PJM engine and price group, then calls:
+
+```http
+POST /negotiated-prices/preview
+```
+
+The preview returns the future Excel shape: one row per selected option-choice combination and final price columns generated from the quantity tiers textarea.
+
+This screen does not generate the `.xlsx` file yet and does not import negotiated prices yet.
