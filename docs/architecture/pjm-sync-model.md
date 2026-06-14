@@ -46,3 +46,7 @@ The runner:
 - returns a count summary and warnings.
 
 It is intentionally not mounted as an automatic server startup task.
+
+Sprint 6 adds read-only admin endpoints under `/pjm-sync/admin`.
+
+These endpoints consume the local Prisma tables only. They do not call PJM and do not mutate data. They are the backend surface for the first backoffice screen.

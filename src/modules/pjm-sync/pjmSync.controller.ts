@@ -1,5 +1,12 @@
 import type { Request, Response } from "express";
 import {
+  getPjmSyncAdminPriceEngine as getPjmSyncAdminPriceEngineFromStore,
+  getPjmSyncAdminSummary as getPjmSyncAdminSummaryFromStore,
+  listPjmSyncAdminEngineMappings as listPjmSyncAdminEngineMappingsFromStore,
+  listPjmSyncAdminEngineOptions as listPjmSyncAdminEngineOptionsFromStore,
+  listPjmSyncAdminPriceEngines as listPjmSyncAdminPriceEnginesFromStore
+} from "./pjmSyncAdmin.service.js";
+import {
   listPjmPriceEngineOptions,
   listPjmPriceEngines,
   listPjmPriceGroups,
@@ -32,6 +39,73 @@ export async function getPjmPriceEngines(_req: Request, res: Response) {
 export async function getPjmPriceEngineOptions(req: Request, res: Response) {
   const engineId = String(req.params.id);
   const options = await listPjmPriceEngineOptions(engineId);
+
+  if (!options) {
+    res.status(404).json({
+      error: "PJM price engine not found",
+      id: engineId
+    });
+    return;
+  }
+
+  res.status(200).json({ data: options });
+}
+
+export async function getPjmSyncAdminSummary(_req: Request, res: Response) {
+  const summary = await getPjmSyncAdminSummaryFromStore();
+  res.status(200).json({ data: summary });
+}
+
+export async function getPjmSyncAdminPriceEngines(
+  _req: Request,
+  res: Response
+) {
+  const priceEngines = await listPjmSyncAdminPriceEnginesFromStore();
+  res.status(200).json({ data: priceEngines });
+}
+
+export async function getPjmSyncAdminPriceEngineDetail(
+  req: Request,
+  res: Response
+) {
+  const engineId = String(req.params.id);
+  const priceEngine = await getPjmSyncAdminPriceEngineFromStore(engineId);
+
+  if (!priceEngine) {
+    res.status(404).json({
+      error: "PJM price engine not found",
+      id: engineId
+    });
+    return;
+  }
+
+  res.status(200).json({ data: priceEngine });
+}
+
+export async function getPjmSyncAdminPriceEngineMappings(
+  req: Request,
+  res: Response
+) {
+  const engineId = String(req.params.id);
+  const mappings = await listPjmSyncAdminEngineMappingsFromStore(engineId);
+
+  if (!mappings) {
+    res.status(404).json({
+      error: "PJM price engine not found",
+      id: engineId
+    });
+    return;
+  }
+
+  res.status(200).json({ data: mappings });
+}
+
+export async function getPjmSyncAdminPriceEngineOptions(
+  req: Request,
+  res: Response
+) {
+  const engineId = String(req.params.id);
+  const options = await listPjmSyncAdminEngineOptionsFromStore(engineId);
 
   if (!options) {
     res.status(404).json({

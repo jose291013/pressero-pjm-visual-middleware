@@ -53,3 +53,13 @@ Run the real PJM catalog sync only when PJM credentials are configured:
 ```bash
 npm run sync:pjm
 ```
+
+Backoffice-ready read endpoints are available under:
+
+```text
+GET /pjm-sync/admin/summary
+GET /pjm-sync/admin/price-engines
+GET /pjm-sync/admin/price-engines/:id
+GET /pjm-sync/admin/price-engines/:id/mappings
+GET /pjm-sync/admin/price-engines/:id/options
+```

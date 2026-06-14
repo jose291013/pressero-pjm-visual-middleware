@@ -53,3 +53,12 @@ export type PjmCatalogSyncResult = {
   choicesProcessed: number;
   warnings: string[];
 };
+
+export type PjmSyncAdminSummary = {
+  priceEngines: number;
+  priceGroups: number;
+  enginePriceGroupMappings: number;
+  options: number;
+  optionChoices: number;
+  latestUpdatedAt: string | null;
+};
