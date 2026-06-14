@@ -124,6 +124,27 @@ Payload:
 
 This call can return price, weight, quantity, attributes and sometimes updated engine options. It is a backend integration concern only. The Pressero visual script must not calculate prices itself.
 
+## Compatible Options Flow
+
+Sprint 13 uses the same `/public/engine` endpoint with `Operation: "options"` to discover compatible options after each admin selection.
+
+Payload:
+
+```json
+{
+  "Operation": "options",
+  "Product": "enginePriceGroupIntegrationId",
+  "Options": [
+    {
+      "Key": "pjm-option-id",
+      "Value": "pjm-choice-value"
+    }
+  ]
+}
+```
+
+This is used by the negotiated-prices admin screen to show only the next compatible option path. It does not calculate prices; `optionsandprice` remains reserved for reference price calculation.
+
 ## Create Jobs
 
 ```http

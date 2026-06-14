@@ -1,5 +1,34 @@
 export type NegotiatedPricesModuleStatus = "excel_plan_foundation";
 
+export type NegotiatedPriceCompatibilitySelection = {
+  pjmKey: string;
+  pjmValue: string;
+};
+
+export type NegotiatedPriceCompatibleChoice = {
+  choiceId: string;
+  choiceName: string;
+  pjmValue: string;
+};
+
+export type NegotiatedPriceCompatibleOption = {
+  optionId: string;
+  optionName: string;
+  pjmKey: string;
+  choices: NegotiatedPriceCompatibleChoice[];
+};
+
+export type NegotiatedPriceCompatibleOptionsInput = {
+  enginePriceGroupIntegrationId: string;
+  selections: NegotiatedPriceCompatibilitySelection[];
+};
+
+export type NegotiatedPriceCompatibleOptionsResult = {
+  enginePriceGroupIntegrationId: string;
+  selections: NegotiatedPriceCompatibilitySelection[];
+  options: NegotiatedPriceCompatibleOption[];
+};
+
 export type NegotiatedPriceChoiceSelection = {
   choiceId: string;
   choiceName: string;

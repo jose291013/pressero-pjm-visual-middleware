@@ -45,12 +45,13 @@ export class PjmHttpError extends Error {
 }
 
 export function buildPjmEngineOptionsRequest(
-  engineIntegrationId: string
+  engineIntegrationId: string,
+  options: PjmEngineOptionValue[] = []
 ): PjmEngineRequest {
   return {
     Operation: "options",
     Product: engineIntegrationId,
-    Options: []
+    Options: options
   };
 }
 
@@ -156,10 +157,11 @@ export class PjmClient {
   }
 
   async getEngineOptions(
-    engineIntegrationId: string
+    engineIntegrationId: string,
+    options: PjmEngineOptionValue[] = []
   ): Promise<PjmEngineOptionsResponse> {
     return this.callEngine<PjmEngineOptionsResponse>(
-      buildPjmEngineOptionsRequest(engineIntegrationId)
+      buildPjmEngineOptionsRequest(engineIntegrationId, options)
     );
   }
 

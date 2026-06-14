@@ -44,6 +44,14 @@ If each selected option has one selected choice, the export has one row. If an o
 
 Each row has a base `combinationKey`. Each quantity tier also has its own stable `combinationHash` because persistence stores negotiated prices by combination and quantity.
 
+## Sprint 13 Compatible Selection Path
+
+The admin option picker now uses PJM `Operation: "options"` to refresh compatible options after each selection. This prevents the admin from selecting from a fully static option list when PJM has already removed incompatible options.
+
+For preview, the selected visible choices still produce a Cartesian product. When several choices are selected for one option, the first checked choice is used only to discover the next PJM-compatible option path.
+
+Before filling real PJM prices in Excel, a later sprint should expand this into branch-by-branch compatibility checks so every generated row is validated against PJM.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.

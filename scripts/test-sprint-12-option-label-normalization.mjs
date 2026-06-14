@@ -54,8 +54,9 @@ assert.match(catalogService, /value:\s*stringifyValue/);
 assert.doesNotMatch(catalogService, /choice\.Name\s*\?\?\s*choice\.Label\s*\?\?\s*choice\.Text\s*\?\?\s*stringifyValue\(choice\.Value\)/);
 
 const adminJs = await readText("src/public/admin/admin.js");
-assert.match(adminJs, /\$\{html\(choice\.name\)\}/);
-assert.match(adminJs, /data-choice-name="\$\{html\(choice\.name\)\}"/);
+assert.match(adminJs, /choiceName:\s*choice\.choiceName\s*\|\|\s*choice\.name/);
+assert.match(adminJs, /\$\{html\(choice\.choiceName\)\}/);
+assert.match(adminJs, /data-choice-name="\$\{html\(choice\.choiceName\)\}"/);
 assert.doesNotMatch(adminJs, /data-choice-name="\$\{html\(choice\.value\)\}"/);
 
 const endpointsDoc = await readText("docs/architecture/pjm-endpoints.md");

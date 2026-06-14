@@ -62,6 +62,11 @@ export function buildPriceGroupPjmId(priceGroupName: string): string {
   return `pjm-price-group-${normalized || "unknown"}`;
 }
 
+export function extractPjmOptionKey(optionPjmId: string): string {
+  const parts = optionPjmId.split(":").filter(Boolean);
+  return parts.at(-1) ?? optionPjmId;
+}
+
 function stringifyValue(value: unknown): string {
   if (value === null || value === undefined) return "";
   return String(value);

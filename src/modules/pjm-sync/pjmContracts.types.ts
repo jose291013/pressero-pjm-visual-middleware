@@ -44,7 +44,8 @@ export type PjmProductEngineListResponse =
 export type PjmEngineOperation = "options" | "optionsandprice";
 
 export type PjmEngineOptionValue = {
-  Name: string;
+  Key?: string;
+  Name?: string;
   Value: string | number | boolean | null;
 };
 

@@ -2,7 +2,8 @@ const state = {
   engines: [],
   organizations: [],
   selectedEngineId: null,
-  negotiatedEngine: null
+  negotiatedEngine: null,
+  negotiatedOptions: []
 };
 
 const els = {
@@ -375,8 +376,80 @@ function renderNegotiatedPriceGroups(engine) {
   }
 }
 
-function renderNegotiatedOptions(engine) {
-  const options = engine?.options ?? [];
+function extractOptionPjmKey(value) {
+  return text(value, "")
+    .split(":")
+    .filter(Boolean)
+    .pop() || text(value, "");
+}
+
+function choiceSelectionKey(optionPjmKey, choiceValue) {
+  return `${optionPjmKey}\u0000${choiceValue}`;
+}
+
+function normalizeNegotiatedOption(option) {
+  const optionPjmKey =
+    option.pjmKey || extractOptionPjmKey(option.pjmId || option.optionId || option.id);
+  const optionId = option.optionId || option.id || option.pjmId || optionPjmKey;
+
+  return {
+    optionId,
+    optionName: option.optionName || option.displayName || option.name || optionPjmKey,
+    pjmKey: optionPjmKey,
+    choices: (option.choices ?? []).map((choice) => ({
+      choiceId: choice.choiceId || choice.id || choice.pjmId || choice.value,
+      choiceName: choice.choiceName || choice.name || choice.label || choice.value,
+      pjmValue: text(choice.pjmValue ?? choice.value ?? choice.id ?? choice.choiceId, "")
+    }))
+  };
+}
+
+function collectSelectedChoiceKeys() {
+  const keys = new Set();
+  const selected = els.npOptionPicker.querySelectorAll("input[type='checkbox']:checked");
+
+  selected.forEach((checkbox) => {
+    keys.add(choiceSelectionKey(checkbox.dataset.optionPjmKey, checkbox.dataset.choiceValue));
+  });
+
+  return keys;
+}
+
+function optionHasSelection(option, selectedChoiceKeys) {
+  return option.choices.some((choice) => {
+    return selectedChoiceKeys.has(choiceSelectionKey(option.pjmKey, choice.pjmValue));
+  });
+}
+
+function getVisibleNegotiatedOptions(options, selectedChoiceKeys) {
+  const visible = [];
+
+  for (const option of options) {
+    visible.push(option);
+
+    if (!optionHasSelection(option, selectedChoiceKeys)) {
+      break;
+    }
+  }
+
+  return visible;
+}
+
+function buildCompatibilitySelections() {
+  return readNegotiatedSelections().map((option) => ({
+    pjmKey: option.pjmKey,
+    pjmValue: option.choices[0]?.pjmValue
+  })).filter((selection) => selection.pjmKey && selection.pjmValue);
+}
+
+function renderNegotiatedOptions(engine, selectedChoiceKeys = new Set()) {
+  const sourceOptions = state.negotiatedOptions.length
+    ? state.negotiatedOptions
+    : engine?.options ?? [];
+  const options = sourceOptions
+    .map(normalizeNegotiatedOption)
+    .filter((option) => option.choices.length > 0);
+  const visibleOptions = getVisibleNegotiatedOptions(options, selectedChoiceKeys);
   els.npOptionPicker.innerHTML = "";
 
   if (!options.length) {
@@ -385,24 +458,25 @@ function renderNegotiatedOptions(engine) {
     return;
   }
 
-  for (const option of options) {
+  for (const option of visibleOptions) {
     const item = document.createElement("article");
     item.className = "option-picker-item";
 
     const choices = option.choices ?? [];
     item.innerHTML = `
-      <strong class="option-picker-title">${html(option.displayName || option.name)}</strong>
+      <strong class="option-picker-title">${html(option.optionName)}</strong>
       <div class="choice-checks">
         ${choices.map((choice) => `
           <label class="choice-check">
             <input type="checkbox"
-              data-option-id="${html(option.id)}"
-              data-option-name="${html(option.displayName || option.name)}"
-              data-option-pjm-key="${html(option.pjmId)}"
-              data-choice-id="${html(choice.id)}"
-              data-choice-name="${html(choice.name)}"
-              data-choice-value="${html(choice.value)}">
-            <span>${html(choice.name)}</span>
+              ${selectedChoiceKeys.has(choiceSelectionKey(option.pjmKey, choice.pjmValue)) ? "checked" : ""}
+              data-option-id="${html(option.optionId)}"
+              data-option-name="${html(option.optionName)}"
+              data-option-pjm-key="${html(option.pjmKey)}"
+              data-choice-id="${html(choice.choiceId)}"
+              data-choice-name="${html(choice.choiceName)}"
+              data-choice-value="${html(choice.pjmValue)}">
+            <span>${html(choice.choiceName)}</span>
           </label>
         `).join("")}
       </div>
@@ -411,7 +485,7 @@ function renderNegotiatedOptions(engine) {
   }
 
   els.npOptionPicker.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
-    checkbox.addEventListener("change", updateNegotiatedSelectedCount);
+    checkbox.addEventListener("change", refreshCompatibleNegotiatedOptions);
   });
   updateNegotiatedSelectedCount();
 }
@@ -445,9 +519,42 @@ function updateNegotiatedSelectedCount() {
   els.npSelectedCount.textContent = `${selectedCount.toLocaleString("fr-FR")} choix`;
 }
 
+async function refreshCompatibleNegotiatedOptions() {
+  updateNegotiatedSelectedCount();
+  const selectedChoiceKeys = collectSelectedChoiceKeys();
+
+  if (!state.negotiatedEngine || !els.npPriceGroupSelect.value) {
+    renderNegotiatedOptions(state.negotiatedEngine, selectedChoiceKeys);
+    return;
+  }
+
+  els.negotiatedStatus.textContent = "Compatibilite";
+
+  try {
+    const response = await getJson("/negotiated-prices/compatible-options", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        enginePriceGroupIntegrationId: els.npPriceGroupSelect.value,
+        selections: buildCompatibilitySelections()
+      })
+    });
+
+    state.negotiatedOptions = response.data?.options ?? [];
+    renderNegotiatedOptions(state.negotiatedEngine, selectedChoiceKeys);
+    els.negotiatedStatus.textContent = "Pret";
+  } catch (error) {
+    els.negotiatedStatus.textContent = "Erreur";
+    els.npOptionPicker.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  }
+}
+
 async function loadNegotiatedEngine() {
   const engineId = els.npEngineSelect.value;
   state.negotiatedEngine = null;
+  state.negotiatedOptions = [];
   renderNegotiatedPriceGroups(null);
   renderNegotiatedOptions(null);
 
@@ -459,7 +566,7 @@ async function loadNegotiatedEngine() {
     const response = await getJson(`/pjm-sync/admin/price-engines/${encodeURIComponent(engineId)}`);
     state.negotiatedEngine = response.data;
     renderNegotiatedPriceGroups(state.negotiatedEngine);
-    renderNegotiatedOptions(state.negotiatedEngine);
+    await refreshCompatibleNegotiatedOptions();
     els.negotiatedStatus.textContent = "Pret";
   } catch (error) {
     els.negotiatedStatus.textContent = "Erreur";
@@ -603,6 +710,11 @@ els.organizationFilter.addEventListener("change", applyFilters);
 els.categoryFilter.addEventListener("change", applyFilters);
 els.priceGroupFilter.addEventListener("change", applyFilters);
 els.npEngineSelect.addEventListener("change", loadNegotiatedEngine);
+els.npPriceGroupSelect.addEventListener("change", () => {
+  state.negotiatedOptions = [];
+  renderPreview({ columns: [], quantities: [], combinationCount: 0 });
+  refreshCompatibleNegotiatedOptions();
+});
 els.npPreviewButton.addEventListener("click", previewNegotiatedPrices);
 els.viewLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
