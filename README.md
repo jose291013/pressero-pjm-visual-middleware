@@ -20,6 +20,7 @@ Sprint 1 only creates the project foundation: Express, `GET /health`, Prisma sch
 npm run dev
 npm run build
 npm run test:sprint1
+npm run test:sprint2
 npm run dev:check
 ```
 
@@ -28,4 +29,21 @@ Install dependencies before running the TypeScript server:
 ```bash
 npm install
 npm run prisma:generate
+```
+
+## Sprint 2 mock PJM data
+
+Sprint 2 adds read-only `pjm-sync` endpoints backed by local Prisma data:
+
+```text
+GET /pjm-sync/categories
+GET /pjm-sync/price-groups
+GET /pjm-sync/price-engines
+GET /pjm-sync/price-engines/:id/options
+```
+
+Load the development mock dataset after configuring PostgreSQL:
+
+```bash
+npm run seed:pjm-mock
 ```
