@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 const DEFAULT_PORT = 3000;
 
 function readPort(value: string | undefined): number {

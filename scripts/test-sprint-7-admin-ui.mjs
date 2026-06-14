@@ -32,6 +32,10 @@ for (const requiredPath of requiredPaths) {
 
 const packageJson = JSON.parse(await readText("package.json"));
 assert.equal(packageJson.scripts["test:sprint7"], "node scripts/test-sprint-7-admin-ui.mjs");
+assert.ok(packageJson.dependencies.dotenv, "dotenv dependency is required for local .env loading");
+
+const envConfig = await readText("src/config/env.ts");
+assert.match(envConfig, /import ["']dotenv\/config["'];/);
 
 const app = await readText("src/app.ts");
 assert.match(app, /app\.use\(["']\/public["'],\s*express\.static\(publicRoot\)\)/);
