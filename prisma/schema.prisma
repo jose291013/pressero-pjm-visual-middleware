@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model PjmProductCategory {
+  id               String               @id @default(cuid())
+  pjmId            String               @unique
+  name             String
+  slug             String?
+  parentId         String?
+  parent           PjmProductCategory?  @relation("PjmCategoryTree", fields: [parentId], references: [id])
+  children         PjmProductCategory[] @relation("PjmCategoryTree")
+  priceEngines     PjmPriceEngine[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+}
+
+model PjmPriceGroup {
+  id           String           @id @default(cuid())
+  pjmId        String           @unique
+  name         String
+  description  String?
+  priceEngines PjmPriceEngine[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model PjmPriceEngine {
+  id                String              @id @default(cuid())
+  pjmId             String              @unique
+  name              String
+  description       String?
+  isActive          Boolean             @default(true)
+  productCategoryId String?
+  priceGroupId      String?
+  productCategory   PjmProductCategory? @relation(fields: [productCategoryId], references: [id])
+  priceGroup        PjmPriceGroup?      @relation(fields: [priceGroupId], references: [id])
+  options           PjmOption[]
+  negotiatedProfiles NegotiatedPriceProfile[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+}
+
+model PjmOption {
+  id            String            @id @default(cuid())
+  pjmId         String            @unique
+  priceEngineId String
+  name          String
+  displayName   String?
+  optionType    String?
+  sortOrder     Int               @default(0)
+  isVisual      Boolean           @default(false)
+  priceEngine   PjmPriceEngine    @relation(fields: [priceEngineId], references: [id], onDelete: Cascade)
+  choices       PjmOptionChoice[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([priceEngineId])
+}
+
+model PjmOptionChoice {
+  id             String                @id @default(cuid())
+  pjmId          String                @unique
+  optionId       String
+  name           String
+  value          String
+  normalizedName String?
+  sortOrder      Int                   @default(0)
+  isActive       Boolean               @default(true)
+  option         PjmOption             @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  visualMapping  VisualOptionMapping?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@index([optionId])
+}
+
+model MediaAsset {
+  id             String                @id @default(cuid())
+  key            String                @unique
+  fileName       String
+  mimeType       String
+  url            String
+  altText        String?
+  width          Int?
+  height         Int?
+  byteSize       Int?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  visualMappings VisualOptionMapping[]
+}
+
+model VisualOptionMapping {
+  id             String          @id @default(cuid())
+  optionChoiceId String          @unique
+  mediaAssetId   String
+  displayOrder   Int             @default(0)
+  isEnabled      Boolean         @default(true)
+  optionChoice   PjmOptionChoice @relation(fields: [optionChoiceId], references: [id], onDelete: Cascade)
+  mediaAsset     MediaAsset      @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([mediaAssetId])
+}
+
+model NegotiatedPriceProfile {
+  id              String                          @id @default(cuid())
+  clientId        String
+  name            String
+  priceEngineId   String?
+  isActive        Boolean                         @default(true)
+  priceEngine     PjmPriceEngine?                 @relation(fields: [priceEngineId], references: [id])
+  combinationSets NegotiatedPriceCombinationSet[]
+  importJobs      NegotiatedPriceImportJob[]
+  createdAt       DateTime                        @default(now())
+  updatedAt       DateTime                        @updatedAt
+
+  @@index([clientId])
+  @@index([priceEngineId])
+}
+
+model NegotiatedPriceCombinationSet {
+  id                    String                 @id @default(cuid())
+  profileId             String
+  quantity              Int
+  pages                 Int?
+  optionChoiceSignature String
+  combinationHash       String                 @unique
+  pjmPrice              Decimal?               @db.Decimal(12, 4)
+  negotiatedPrice       Decimal?               @db.Decimal(12, 4)
+  currency              String                 @default("EUR")
+  profile               NegotiatedPriceProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([profileId])
+  @@index([quantity])
+}
+
+model NegotiatedPriceImportJob {
+  id             String                 @id @default(cuid())
+  profileId      String
+  fileName       String
+  status         String                 @default("pending")
+  rowCount       Int                    @default(0)
+  errorMessage   String?
+  profile        NegotiatedPriceProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  completedAt    DateTime?
+
+  @@index([profileId])
+  @@index([status])
+}

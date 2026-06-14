@@ -1,0 +1,522 @@
+<style>
+/* =========================================================
+   PRESSERO / PJM VISUAL CALCULATOR V22.1 - STABLE NATIVE MODE / 2-COLUMN QUANTITIES
+   - Ne pilote plus les quantités en JS.
+   - Les quantités restent les vrais champs Pressero/PJM.
+   - Le script transforme uniquement Color en boutons image.
+   ========================================================= */
+
+html.pe-vc-active,
+body.pe-vc-active {
+  --pe-vc-border: #d6dce8;
+  --pe-vc-green: #16833a;
+  --pe-vc-blue: #1f6feb;
+}
+
+/* Le calculateur natif reste actif et visible pour les quantités */
+body.pe-vc-active #calcParmInputs {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+/* Masque seulement la ligne native Color */
+body.pe-vc-active #calcParmInputs li:has(#Options_1_Value),
+body.pe-vc-active #calcParmInputs .form-group:has(#Options_1_Value) {
+  display: none !important;
+}
+
+/* Fallback : cache seulement le select Color si :has ne s'applique pas */
+body.pe-vc-active #Options_1_Value {
+  position: absolute !important;
+  left: -99999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Pas de titre natif en double */
+body.pe-vc-active #calcParmInputs .pricingCalcHeading,
+body.pe-vc-active #calcParmInputs h2.pricingCalcHeading {
+  display: none !important;
+}
+
+/* Style natif propre + quantités en 2 colonnes */
+body.pe-vc-active #calcParmInputs ol,
+body.pe-vc-active #calcParmInputs ol.list-unstyled {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  padding-left: 0 !important;
+  margin: 0 !important;
+  list-style: none !important;
+  align-items: stretch !important;
+}
+
+/* Les éléments qui ne sont pas des quantités prennent toute la largeur */
+body.pe-vc-active #calcParmInputs ol > li:not(:has(input[id^="Options_"][id$="_Value"])) {
+  grid-column: 1 / -1 !important;
+}
+
+/* Cartes pour les vrais champs quantité */
+body.pe-vc-active #calcParmInputs li:has(input[id^="Options_"][id$="_Value"]),
+body.pe-vc-active #calcParmInputs .form-group:has(input[id^="Options_"][id$="_Value"]) {
+  background: #fff !important;
+  border: 1px solid #e1e4ea !important;
+  border-radius: 10px !important;
+  padding: 12px !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+body.pe-vc-active #calcParmInputs li:has(input[id^="Options_"][id$="_Value"]) label,
+body.pe-vc-active #calcParmInputs .form-group:has(input[id^="Options_"][id$="_Value"]) label {
+  display: block !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #111 !important;
+  margin-bottom: 8px !important;
+}
+
+body.pe-vc-active #calcParmInputs input[id^="Options_"][id$="_Value"]:not([type="hidden"]) {
+  display: block !important;
+  width: 100% !important;
+  height: 38px !important;
+  border: 1px solid #d6d6d6 !important;
+  border-radius: 6px !important;
+  text-align: center !important;
+  font-weight: 700 !important;
+  box-sizing: border-box !important;
+  background: #fff !important;
+}
+
+body.pe-vc-active #calcParmInputs input[type="hidden"] {
+  display: none !important;
+}
+
+/* Neutralisation overlays/spinners éventuels */
+body.pe-vc-active #uiLock,
+body.pe-vc-active #pcGlobalNavOverlay,
+body.pe-vc-active #myCustomLoaderLocal,
+body.pe-vc-active .k-loading-mask,
+body.pe-vc-active .k-loading-image {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body.pe-vc-active #fixedPriceContainer {
+  display: none !important;
+}
+
+/* Interface Color */
+#pe-visual-configurator {
+  display: block !important;
+  background: #fff !important;
+  border: 1px solid #e1e4ea !important;
+  border-radius: 12px !important;
+  padding: 18px !important;
+  margin: 0 0 20px 0 !important;
+  box-sizing: border-box !important;
+}
+
+.pe-vc-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-bottom: 16px !important;
+}
+
+.pe-vc-title {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: #111 !important;
+  margin: 0 !important;
+}
+
+.pe-vc-status {
+  font-size: 13px !important;
+  color: #64748b !important;
+  min-height: 18px !important;
+  text-align: right !important;
+}
+
+#pe-visual-configurator.is-busy .pe-vc-status::after {
+  content: "Mise à jour du prix..." !important;
+}
+
+.pe-vc-section {
+  margin-bottom: 22px !important;
+}
+
+.pe-vc-section:last-child {
+  margin-bottom: 0 !important;
+}
+
+.pe-vc-section-title {
+  display: block !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #111 !important;
+  margin: 0 0 10px 0 !important;
+}
+
+.pe-vc-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.pe-vc-choice {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  min-height: 104px !important;
+  padding: 8px !important;
+  background: #fff !important;
+  border: 2px solid var(--pe-vc-border) !important;
+  border-radius: 10px !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease !important;
+}
+
+.pe-vc-choice:hover {
+  transform: translateY(-2px) !important;
+  border-color: var(--pe-vc-blue) !important;
+}
+
+.pe-vc-choice.is-selected {
+  border-color: var(--pe-vc-green) !important;
+  box-shadow: 0 0 0 3px rgba(22, 131, 58, 0.16) !important;
+}
+
+.pe-vc-choice img {
+  width: 72px !important;
+  height: 72px !important;
+  object-fit: contain !important;
+  display: block !important;
+  pointer-events: none !important;
+}
+
+.pe-vc-choice-label {
+  font-size: 13px !important;
+  line-height: 1.15 !important;
+  font-weight: 600 !important;
+  color: #111 !important;
+}
+
+@media (max-width: 768px) {
+  body.pe-vc-active #calcParmInputs ol,
+  body.pe-vc-active #calcParmInputs ol.list-unstyled {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+</style>
+
+<script>
+(function () {
+  "use strict";
+
+  if (window.__PE_VISUAL_CALCULATOR_V221_LOADED__) return;
+  window.__PE_VISUAL_CALCULATOR_V221_LOADED__ = true;
+
+  function onReady(fn) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fn, { once: true });
+    } else {
+      fn();
+    }
+  }
+
+  onReady(function () {
+    const CONFIG = {
+      colorFieldId: "Options_1_Value",
+      finalPriceId: "pricingEngine_lblFinalPrice",
+      settleMs: 700,
+      colorImages: {
+        blanc: "https://aleyant.s3.amazonaws.com/Images+de+tsshirt/blanc.png",
+        rouge: "https://aleyant.s3.amazonaws.com/Images+de+tsshirt/rouge.png",
+        vert: "https://aleyant.s3.amazonaws.com/Images+de+tsshirt/vert.png",
+        jaune: "https://aleyant.s3.amazonaws.com/Images+de+tsshirt/jaune.png",
+        bleu: "https://aleyant.s3.amazonaws.com/Images+de+tsshirt/bleu.png",
+        noir: "https://aleyant.s3.amazonaws.com/Images+de+tsshirt/noir.png"
+      }
+    };
+
+    let settleTimer = null;
+    let priceObserver = null;
+    let observedPriceNode = null;
+
+    document.documentElement.classList.add("pe-vc-active");
+    document.body.classList.add("pe-vc-active");
+
+    function normalizeText(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+    }
+
+    function hardShield() {
+      document.body.classList.remove("pc-busy");
+      document.documentElement.classList.remove("lock-scroll");
+      document.body.classList.remove("lock-scroll");
+      ["uiLock", "pcGlobalNavOverlay", "myCustomLoaderLocal"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove("active");
+        el.setAttribute("aria-hidden", "true");
+        el.style.setProperty("display", "none", "important");
+        el.style.setProperty("opacity", "0", "important");
+        el.style.setProperty("visibility", "hidden", "important");
+        el.style.setProperty("pointer-events", "none", "important");
+      });
+    }
+
+    function getColorSelect() {
+      return document.getElementById(CONFIG.colorFieldId);
+    }
+
+    function getFieldGroup(field) {
+      if (!field) return null;
+      return (
+        field.closest("li.form-group.PriceCalc_CalcParm") ||
+        field.closest("li.form-group") ||
+        field.closest(".form-group") ||
+        field.closest("li") ||
+        field.parentElement
+      );
+    }
+
+    function getLabelText(field) {
+      const group = getFieldGroup(field);
+      const label = group ? group.querySelector("label") : null;
+      return (label && label.textContent ? label.textContent.trim() : "") || "Color";
+    }
+
+    function getColorImage(text) {
+      const normalized = normalizeText(text);
+      if (CONFIG.colorImages[normalized]) return CONFIG.colorImages[normalized];
+      const matching = Object.keys(CONFIG.colorImages).find(function (key) {
+        return normalized.indexOf(key) !== -1;
+      });
+      return matching ? CONFIG.colorImages[matching] : "";
+    }
+
+    function ensureRoot() {
+      let root = document.getElementById("pe-visual-configurator");
+      if (!root) {
+        root = document.createElement("div");
+        root.id = "pe-visual-configurator";
+        root.setAttribute("aria-live", "polite");
+        root.setAttribute("data-no-ui-lock", "1");
+        root.innerHTML =
+          '<div class="pe-vc-header">' +
+            '<h2 class="pe-vc-title">Configurez votre produit</h2>' +
+            '<div class="pe-vc-status"></div>' +
+          '</div>' +
+          '<div class="pe-vc-sections"></div>';
+
+        const anchor = document.getElementById("calcParmInputs") || document.getElementById("pricingEngineArea");
+        if (anchor && anchor.parentNode) {
+          anchor.parentNode.insertBefore(root, anchor);
+        } else {
+          document.body.appendChild(root);
+        }
+      }
+      return root;
+    }
+
+    function getSectionsRoot() {
+      return ensureRoot().querySelector(".pe-vc-sections");
+    }
+
+    function setBusy(on) {
+      ensureRoot().classList.toggle("is-busy", !!on);
+      if (on) hardShield();
+    }
+
+    function scheduleSettle() {
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(function () {
+        setBusy(false);
+        hardShield();
+        syncColorSelection();
+      }, CONFIG.settleMs);
+    }
+
+    function attachPriceObserver() {
+      const priceNode = document.getElementById(CONFIG.finalPriceId);
+      if (!priceNode || priceNode === observedPriceNode) return;
+      if (priceObserver) priceObserver.disconnect();
+      observedPriceNode = priceNode;
+      priceObserver = new MutationObserver(function () {
+        scheduleSettle();
+      });
+      priceObserver.observe(priceNode, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+    }
+
+    function patchCalculationFinishCallback() {
+      const current = window.intCalcFinish;
+      if (current && current.__peVcV221Patched) return;
+      const original = current;
+      const patched = function () {
+        let result;
+        if (typeof original === "function") result = original.apply(this, arguments);
+        scheduleSettle();
+        syncColorSelection();
+        return result;
+      };
+      patched.__peVcV221Patched = true;
+      window.intCalcFinish = patched;
+    }
+
+    function createColorSection() {
+      const select = getColorSelect();
+      if (!select) return;
+      const root = getSectionsRoot();
+      let section = document.getElementById("pe-vc-color-section");
+      const signature = Array.prototype.map.call(select.options || [], function (opt) {
+        return String(opt.value) + "|" + String(opt.text || "").trim();
+      }).join("||");
+
+      if (section && section.getAttribute("data-signature") === signature) {
+        syncColorSelection();
+        return;
+      }
+
+      if (!section) {
+        section = document.createElement("div");
+        section.id = "pe-vc-color-section";
+        section.className = "pe-vc-section";
+        root.appendChild(section);
+      }
+
+      section.setAttribute("data-signature", signature);
+      section.innerHTML = "";
+
+      const title = document.createElement("h3");
+      title.className = "pe-vc-section-title";
+      title.textContent = getLabelText(select);
+      section.appendChild(title);
+
+      const grid = document.createElement("div");
+      grid.className = "pe-vc-grid";
+
+      Array.prototype.forEach.call(select.options || [], function (opt) {
+        const text = String(opt.text || "").trim();
+        const value = String(opt.value || "");
+        if (!text) return;
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "pe-vc-choice";
+        btn.setAttribute("data-value", value);
+        btn.setAttribute("data-no-ui-lock", "1");
+
+        const image = getColorImage(text);
+        if (image) {
+          const img = document.createElement("img");
+          img.src = image;
+          img.alt = text;
+          img.loading = "lazy";
+          btn.appendChild(img);
+        }
+
+        const label = document.createElement("span");
+        label.className = "pe-vc-choice-label";
+        label.textContent = text;
+        btn.appendChild(label);
+        grid.appendChild(btn);
+      });
+
+      section.appendChild(grid);
+      syncColorSelection();
+    }
+
+    function syncColorSelection() {
+      const select = getColorSelect();
+      const section = document.getElementById("pe-vc-color-section");
+      if (!select || !section) return;
+      const value = String(select.value || "");
+      section.querySelectorAll(".pe-vc-choice").forEach(function (btn) {
+        const selected = btn.getAttribute("data-value") === value;
+        btn.classList.toggle("is-selected", selected);
+        btn.setAttribute("aria-pressed", selected ? "true" : "false");
+      });
+    }
+
+    function commitColor(value) {
+      const select = getColorSelect();
+      if (!select) return;
+      const old = String(select.value || "");
+      select.value = String(value);
+      Array.prototype.forEach.call(select.options || [], function (opt) {
+        const selected = String(opt.value) === String(value);
+        opt.selected = selected;
+        if (selected) opt.setAttribute("selected", "selected");
+        else opt.removeAttribute("selected");
+      });
+      syncColorSelection();
+      if (old !== String(value)) {
+        setBusy(true);
+        try {
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+        } catch (e) {}
+        scheduleSettle();
+      }
+    }
+
+    function render() {
+      document.documentElement.classList.add("pe-vc-active");
+      document.body.classList.add("pe-vc-active");
+      ensureRoot();
+      attachPriceObserver();
+      hardShield();
+      createColorSection();
+    }
+
+    document.addEventListener("click", function (event) {
+      const choice = event.target.closest("#pe-visual-configurator .pe-vc-choice");
+      if (!choice) return;
+      event.preventDefault();
+      event.stopPropagation();
+      commitColor(choice.getAttribute("data-value"));
+    }, true);
+
+    document.addEventListener("change", function (event) {
+      if (event.target && event.target.id === CONFIG.colorFieldId) {
+        syncColorSelection();
+      }
+    }, true);
+
+    setInterval(hardShield, 250);
+
+    patchCalculationFinishCallback();
+    setTimeout(patchCalculationFinishCallback, 300);
+    setTimeout(patchCalculationFinishCallback, 1000);
+    setTimeout(patchCalculationFinishCallback, 2000);
+
+    render();
+    setTimeout(render, 300);
+    setTimeout(render, 1000);
+  });
+})();
+</script>
