@@ -67,6 +67,16 @@ function stringifyValue(value: unknown): string {
   return String(value);
 }
 
+function firstStringValue(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+
+  return null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -112,12 +122,24 @@ function readEngineOptions(
 ): PjmEngineOptionResponse[] {
   if (Array.isArray(response)) return response;
   if (Array.isArray(response.EngineOptions)) return response.EngineOptions;
+  if (Array.isArray(response.engineOptions)) return response.engineOptions;
   if (Array.isArray(response.Options)) return response.Options;
+  if (Array.isArray(response.options)) return response.options;
+  if (Array.isArray(response.Values)) return response.Values;
+  if (Array.isArray(response.values)) return response.values;
   return [];
 }
 
 function readChoices(option: PjmEngineOptionResponse): PjmEngineChoiceResponse[] {
-  return option.Values ?? option.Choices ?? option.Options ?? [];
+  return (
+    option.Values ??
+    option.values ??
+    option.Choices ??
+    option.choices ??
+    option.Options ??
+    option.options ??
+    []
+  );
 }
 
 export function normalizePjmEngineOptionsResponse(
@@ -127,39 +149,91 @@ export function normalizePjmEngineOptionsResponse(
   return readEngineOptions(response).map((option, optionIndex) => {
     const optionStableSource =
       option.Id ??
+      option.id ??
       option.Name ??
+      option.name ??
       option.Label ??
+      option.label ??
       `option-${optionIndex + 1}`;
     const optionPjmId = `${enginePjmId}:${normalizeText(String(optionStableSource))}`;
     const optionName =
-      option.Name ?? option.Label ?? option.Id ?? `Option ${optionIndex + 1}`;
+      firstStringValue(
+        option.Label,
+        option.label,
+        option.DisplayName,
+        option.displayName,
+        option.Title,
+        option.title,
+        option.Name,
+        option.name,
+        option.Id,
+        option.id
+      ) ?? `Option ${optionIndex + 1}`;
+    const optionDisplayName =
+      firstStringValue(
+        option.Label,
+        option.label,
+        option.DisplayName,
+        option.displayName,
+        option.Title,
+        option.title,
+        optionName
+      ) ?? optionName;
 
     return {
       pjmId: optionPjmId,
       name: optionName,
-      displayName: option.Label ?? optionName,
-      optionType: option.Type ?? "select",
+      displayName: optionDisplayName,
+      optionType: option.Type ?? option.type ?? "select",
       sortOrder: (optionIndex + 1) * 10,
       isVisual: false,
       choices: readChoices(option).map((choice, choiceIndex) => {
         const choiceStableSource =
           choice.Id ??
+          choice.id ??
           choice.Value ??
+          choice.value ??
           choice.Name ??
+          choice.name ??
+          choice.Key ??
+          choice.key ??
           choice.Label ??
+          choice.label ??
           choice.Text ??
+          choice.text ??
           `choice-${choiceIndex + 1}`;
         const choiceName =
-          choice.Name ??
-          choice.Label ??
-          choice.Text ??
-          stringifyValue(choice.Value) ??
-          `Choice ${choiceIndex + 1}`;
+          firstStringValue(
+            choice.Key,
+            choice.key,
+            choice.Label,
+            choice.label,
+            choice.Text,
+            choice.text,
+            choice.DisplayName,
+            choice.displayName,
+            choice.Title,
+            choice.title,
+            choice.Description,
+            choice.description,
+            choice.Name,
+            choice.name,
+            choice.Value,
+            choice.value
+          ) ?? `Choice ${choiceIndex + 1}`;
 
         return {
           pjmId: `${optionPjmId}:${normalizeText(String(choiceStableSource))}`,
           name: choiceName,
-          value: stringifyValue(choice.Value ?? choice.Id ?? choiceName),
+          value: stringifyValue(
+            choice.Value ??
+              choice.value ??
+              choice.Id ??
+              choice.id ??
+              choice.Key ??
+              choice.key ??
+              choiceName
+          ),
           normalizedName: normalizeText(choiceName),
           sortOrder: (choiceIndex + 1) * 10
         };

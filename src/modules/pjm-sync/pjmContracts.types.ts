@@ -56,28 +56,57 @@ export type PjmEngineRequest = {
 
 export type PjmEngineChoiceResponse = {
   Id?: string;
+  id?: string;
+  Key?: string;
+  key?: string;
   Name?: string;
+  name?: string;
   Value?: string | number | boolean | null;
+  value?: string | number | boolean | null;
   Label?: string;
+  label?: string;
   Text?: string;
+  text?: string;
+  Description?: string;
+  description?: string;
+  DisplayName?: string;
+  displayName?: string;
+  Title?: string;
+  title?: string;
 };
 
 export type PjmEngineOptionResponse = {
   Id?: string;
+  id?: string;
   Name?: string;
+  name?: string;
   Label?: string;
+  label?: string;
+  DisplayName?: string;
+  displayName?: string;
+  Title?: string;
+  title?: string;
   Type?: string;
+  type?: string;
   Values?: PjmEngineChoiceResponse[];
   Choices?: PjmEngineChoiceResponse[];
   Options?: PjmEngineChoiceResponse[];
+  values?: PjmEngineChoiceResponse[];
+  choices?: PjmEngineChoiceResponse[];
+  options?: PjmEngineChoiceResponse[];
   Suppress?: boolean;
+  suppress?: boolean;
 };
 
 export type PjmEngineOptionsResponse =
   | PjmEngineOptionResponse[]
   | {
       EngineOptions?: PjmEngineOptionResponse[];
+      engineOptions?: PjmEngineOptionResponse[];
       Options?: PjmEngineOptionResponse[];
+      options?: PjmEngineOptionResponse[];
+      Values?: PjmEngineOptionResponse[];
+      values?: PjmEngineOptionResponse[];
     };
 
 export type PjmOptionsAndPriceResponse = {

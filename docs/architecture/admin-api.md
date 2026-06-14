@@ -127,3 +127,11 @@ POST /negotiated-prices/preview
 The preview returns the future Excel shape: one row per selected option-choice combination and final price columns generated from the quantity tiers textarea.
 
 This screen does not generate the `.xlsx` file yet and does not import negotiated prices yet.
+
+## Sprint 12 Option Labels
+
+The admin UI expects synced PJM choices to expose readable labels through `choice.name`.
+
+The sync normalizer now maps PJM choice labels from `Key`, `Label`, `Text`, `DisplayName`, `Title`, `Description` or `Name`, while keeping the PJM technical value in `choice.value`. If an existing database was synchronized before this sprint, relaunch the admin `Synchroniser PJM` action to refresh stored choice labels.
+
+The negotiated-prices organization field remains manual for now. The final behavior should use a Pressero site dropdown once Pressero site synchronization exists.

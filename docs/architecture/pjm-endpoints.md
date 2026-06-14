@@ -86,6 +86,21 @@ Payload:
 
 This retrieves the option structure for one engine. Later sprints will normalize this response into `PjmOption` and `PjmOptionChoice`.
 
+## PJM Choice Labels
+
+Sprint 12 clarifies the option-choice normalization.
+
+Some PJM option responses expose readable choices as `Key` and technical values as `Value`:
+
+```json
+{
+  "Key": "Papier couche 135 g",
+  "Value": "f9560008-8eb6-4d44-b090-af35d1426c66"
+}
+```
+
+The middleware stores the readable text in `PjmOptionChoice.name` and the technical value in `PjmOptionChoice.value`. Other readable fields are accepted as fallbacks, including `Label`, `Text`, `DisplayName`, `Title`, `Description` and `Name`.
+
 ## Options And Price
 
 ```http
