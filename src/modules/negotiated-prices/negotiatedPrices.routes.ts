@@ -1,6 +1,10 @@
 import { Router } from "express";
-import { getNegotiatedPricesStatus } from "./negotiatedPrices.controller.js";
+import {
+  getNegotiatedPricesStatus,
+  postNegotiatedPricesPreview
+} from "./negotiatedPrices.controller.js";
 
 export const negotiatedPricesRouter = Router();
 
 negotiatedPricesRouter.get("/", getNegotiatedPricesStatus);
+negotiatedPricesRouter.post("/preview", postNegotiatedPricesPreview);

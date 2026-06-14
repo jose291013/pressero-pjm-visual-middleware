@@ -109,6 +109,41 @@ Payload:
 
 This call can return price, weight, quantity, attributes and sometimes updated engine options. It is a backend integration concern only. The Pressero visual script must not calculate prices itself.
 
+## Create Jobs
+
+```http
+POST https://ams.printjobmanager.com/api/public/jobs
+```
+
+This endpoint creates the PJM order/job payload after the middleware has resolved the selected engine, organization, engine values and final negotiated price.
+
+Important payload fields:
+
+```json
+{
+  "orderId": "590060",
+  "orderNumber": 1200,
+  "organizationIntegrationId": "74515bbe-1662-4760-900a-59fb68ccd1c5",
+  "jobs": [
+    {
+      "jobId": "22222230",
+      "jobName": "Estimate - booklet saddle stitching",
+      "quantity": 25,
+      "price": 0.0,
+      "engineIntegrationId": "59a62272-9f23-4815-beff-8d29ca95e8b8",
+      "engineValues": [
+        {
+          "Key": "d2d4c097-fe41-4f01-93c6-126477d8da7c",
+          "Value": "25"
+        }
+      ]
+    }
+  ]
+}
+```
+
+For negotiated-price products, the middleware will use `optionsandprice` to calculate the reference PJM price while generating the Excel, then later use the saved negotiated price when creating the PJM job. The actual job creation is not automatic and will be implemented after Excel export/import persistence.
+
 ## Sprint 4 Client Boundary
 
 `src/modules/pjm-sync/pjmClient.ts` contains the isolated PJM HTTP client.
@@ -119,6 +154,7 @@ Responsibilities:
 - call `productEngines/list`;
 - call `/public/engine` with `Operation: "options"`;
 - call `/public/engine` with `Operation: "optionsandprice"`;
+- call `/public/jobs` for future job creation;
 - expose payload builders for tests and future sync code.
 
 Non-responsibilities:

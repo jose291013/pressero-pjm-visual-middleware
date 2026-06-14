@@ -17,6 +17,7 @@
     "test:sprint7": "node scripts/test-sprint-7-admin-ui.mjs",
     "test:sprint8": "node scripts/test-sprint-8-admin-sync-trigger.mjs",
     "test:sprint9": "node scripts/test-sprint-9-admin-catalog-organization.mjs",
+    "test:sprint10": "node scripts/test-sprint-10-negotiated-prices-excel-plan.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

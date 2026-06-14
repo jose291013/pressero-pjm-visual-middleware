@@ -1,6 +1,8 @@
 import { env } from "../../config/env.js";
 import type {
   PjmAuthenticateResponse,
+  PjmCreateJobsRequest,
+  PjmCreateJobsResponse,
   PjmEngineOptionValue,
   PjmEngineOptionsResponse,
   PjmEngineRequest,
@@ -167,6 +169,16 @@ export class PjmClient {
   ): Promise<PjmOptionsAndPriceResponse> {
     return this.callEngine<PjmOptionsAndPriceResponse>(
       buildPjmOptionsAndPriceRequest(engineIntegrationId, options)
+    );
+  }
+
+  async createJobs(
+    payload: PjmCreateJobsRequest
+  ): Promise<PjmCreateJobsResponse> {
+    return this.postJson<PjmCreateJobsResponse>(
+      "/public/jobs",
+      payload,
+      await this.authenticate()
     );
   }
 

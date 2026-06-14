@@ -93,3 +93,52 @@ export type PjmOptionsAndPriceResponse = {
   Error?: string;
   EngineOptions?: PjmEngineOptionResponse[];
 };
+
+export type PjmJobEngineValue = {
+  Key: string;
+  Value: string | number | boolean | null;
+};
+
+export type PjmCreateJobItem = {
+  jobId: string;
+  jobName: string;
+  quantity: number;
+  jobNumber: number;
+  cost: number;
+  price: number;
+  discount: number;
+  shipping: number;
+  customerJobNotes?: string | null;
+  productionNotes?: string | null;
+  shippingMethod?: string | null;
+  reqShipDate?: string | null;
+  statusName?: string;
+  engineIntegrationId: string;
+  engineValues: PjmJobEngineValue[];
+  productionFiles?: unknown[];
+  uploadedFiles?: unknown[];
+  [key: string]: unknown;
+};
+
+export type PjmCreateJobsRequest = {
+  orderId: string;
+  orderNumber: number;
+  organizationIntegrationId: string;
+  CSREmail?: string | null;
+  SalesRepEmail?: string | null;
+  customerOrderNotes?: string | null;
+  poNumber?: string | null;
+  reqShipDate?: string | null;
+  jobs: PjmCreateJobItem[];
+  customer?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    fax?: string | null;
+  };
+  payments?: unknown[];
+  [key: string]: unknown;
+};
+
+export type PjmCreateJobsResponse = Record<string, unknown>;
