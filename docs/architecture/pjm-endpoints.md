@@ -1,0 +1,94 @@
+# PJM Endpoints
+
+Sprint 3 documents the PJM contracts used by the middleware. These contracts come from the provided endpoint details and from the `saas-quote-orchestrator` reference archive in `docs/reference`.
+
+The archive is intentionally treated as a local reference only because it contains environment files and repository metadata. Secrets must not be copied into this project.
+
+## Authentication
+
+```http
+POST https://ams.printjobmanager.com/api/public/Authenticate
+```
+
+Request:
+
+```json
+{
+  "UserName": "configured username",
+  "Password": "configured password"
+}
+```
+
+The token may be returned under one of several names, including `Token`, `token`, `AccessToken`, `accessToken` or `access_token`.
+
+Authenticated calls use:
+
+```http
+Authorization: Bearer <token>
+```
+
+## Product Engines And Price Groups
+
+```http
+POST https://ams.printjobmanager.com/api/public/productEngines/list
+```
+
+Response shape:
+
+```json
+[
+  {
+    "Id": "ad4c3730-c501-4f74-87b2-bc01d96d0b7e",
+    "Name": "Bache format ouvert de 20 a 500 cm",
+    "Mappings": [
+      {
+        "EnginePriceGroupIntegrationId": "1f64f273-b8e3-42bf-bbcf-c784c7e42169",
+        "PriceGroupName": "Groupe 4 + 45%"
+      }
+    ]
+  }
+]
+```
+
+Important model consequence: one product engine can have multiple price-group mappings. The middleware stores those mappings in `PjmEnginePriceGroupMapping`.
+
+## Engine Options
+
+```http
+POST https://ams.printjobmanager.com/api/public/engine
+```
+
+Payload:
+
+```json
+{
+  "Operation": "options",
+  "Product": "engineIntegrationId",
+  "Options": []
+}
+```
+
+This retrieves the option structure for one engine. Later sprints will normalize this response into `PjmOption` and `PjmOptionChoice`.
+
+## Options And Price
+
+```http
+POST https://ams.printjobmanager.com/api/public/engine
+```
+
+Payload:
+
+```json
+{
+  "Operation": "optionsandprice",
+  "Product": "engineIntegrationId",
+  "Options": [
+    {
+      "Name": "OptionName",
+      "Value": "selectedValue"
+    }
+  ]
+}
+```
+
+This call can return price, weight, quantity, attributes and sometimes updated engine options. It is a backend integration concern only. The Pressero visual script must not calculate prices itself.

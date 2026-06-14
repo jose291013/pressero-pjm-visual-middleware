@@ -13,6 +13,11 @@ export const pjmSyncMockDataset: PjmSyncMockDataset = {
       pjmId: "pjm-group-standard",
       name: "Tarif standard",
       description: "Groupe de prix mocke pour valider la fondation pjm-sync."
+    },
+    {
+      pjmId: "pjm-group-premium",
+      name: "Groupe premium + 25%",
+      description: "Deuxieme groupe mocke pour valider les mappings multiples."
     }
   ],
   priceEngines: [
@@ -22,7 +27,16 @@ export const pjmSyncMockDataset: PjmSyncMockDataset = {
       description: "Moteur PJM mocke pour tester categories, options et choix.",
       isActive: true,
       categoryPjmId: "pjm-cat-signage",
-      priceGroupPjmId: "pjm-group-standard",
+      mappings: [
+        {
+          enginePriceGroupIntegrationId: "pjm-map-poster-a3-standard",
+          priceGroupPjmId: "pjm-group-standard"
+        },
+        {
+          enginePriceGroupIntegrationId: "pjm-map-poster-a3-premium",
+          priceGroupPjmId: "pjm-group-premium"
+        }
+      ],
       options: [
         {
           pjmId: "pjm-option-paper",

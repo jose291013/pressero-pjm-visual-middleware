@@ -21,29 +21,42 @@ model PjmProductCategory {
 }
 
 model PjmPriceGroup {
-  id           String           @id @default(cuid())
-  pjmId        String           @unique
-  name         String
-  description  String?
-  priceEngines PjmPriceEngine[]
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id             String                       @id @default(cuid())
+  pjmId          String                       @unique
+  name           String
+  description    String?
+  engineMappings PjmEnginePriceGroupMapping[]
+  createdAt      DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
 }
 
 model PjmPriceEngine {
-  id                String              @id @default(cuid())
-  pjmId             String              @unique
-  name              String
-  description       String?
-  isActive          Boolean             @default(true)
-  productCategoryId String?
-  priceGroupId      String?
-  productCategory   PjmProductCategory? @relation(fields: [productCategoryId], references: [id])
-  priceGroup        PjmPriceGroup?      @relation(fields: [priceGroupId], references: [id])
-  options           PjmOption[]
+  id                 String                       @id @default(cuid())
+  pjmId              String                       @unique
+  name               String
+  description        String?
+  isActive           Boolean                      @default(true)
+  productCategoryId  String?
+  productCategory    PjmProductCategory?          @relation(fields: [productCategoryId], references: [id])
+  priceGroupMappings PjmEnginePriceGroupMapping[]
+  options            PjmOption[]
   negotiatedProfiles NegotiatedPriceProfile[]
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+}
+
+model PjmEnginePriceGroupMapping {
+  id                            String         @id @default(cuid())
+  enginePriceGroupIntegrationId String         @unique
+  priceEngineId                 String
+  priceGroupId                  String
+  priceEngine                   PjmPriceEngine @relation(fields: [priceEngineId], references: [id], onDelete: Cascade)
+  priceGroup                    PjmPriceGroup  @relation(fields: [priceGroupId], references: [id], onDelete: Cascade)
+  createdAt                     DateTime       @default(now())
+  updatedAt                     DateTime       @updatedAt
+
+  @@index([priceEngineId])
+  @@index([priceGroupId])
 }
 
 model PjmOption {

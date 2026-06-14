@@ -15,6 +15,11 @@ const dataset = {
       pjmId: "pjm-group-standard",
       name: "Tarif standard",
       description: "Groupe de prix mocke pour valider la fondation pjm-sync."
+    },
+    {
+      pjmId: "pjm-group-premium",
+      name: "Groupe premium + 25%",
+      description: "Deuxieme groupe mocke pour valider les mappings multiples."
     }
   ],
   priceEngines: [
@@ -24,7 +29,16 @@ const dataset = {
       description: "Moteur PJM mocke pour tester categories, options et choix.",
       isActive: true,
       categoryPjmId: "pjm-cat-signage",
-      priceGroupPjmId: "pjm-group-standard",
+      mappings: [
+        {
+          enginePriceGroupIntegrationId: "pjm-map-poster-a3-standard",
+          priceGroupPjmId: "pjm-group-standard"
+        },
+        {
+          enginePriceGroupIntegrationId: "pjm-map-poster-a3-premium",
+          priceGroupPjmId: "pjm-group-premium"
+        }
+      ],
       options: [
         {
           pjmId: "pjm-option-paper",
@@ -106,9 +120,6 @@ async function seed() {
     const category = await prisma.pjmProductCategory.findUniqueOrThrow({
       where: { pjmId: engine.categoryPjmId }
     });
-    const priceGroup = await prisma.pjmPriceGroup.findUniqueOrThrow({
-      where: { pjmId: engine.priceGroupPjmId }
-    });
 
     const priceEngine = await prisma.pjmPriceEngine.upsert({
       where: { pjmId: engine.pjmId },
@@ -116,18 +127,39 @@ async function seed() {
         name: engine.name,
         description: engine.description,
         isActive: engine.isActive,
-        productCategoryId: category.id,
-        priceGroupId: priceGroup.id
+        productCategoryId: category.id
       },
       create: {
         pjmId: engine.pjmId,
         name: engine.name,
         description: engine.description,
         isActive: engine.isActive,
-        productCategoryId: category.id,
-        priceGroupId: priceGroup.id
+        productCategoryId: category.id
       }
     });
+
+    for (const mapping of engine.mappings) {
+      const priceGroup = await prisma.pjmPriceGroup.findUniqueOrThrow({
+        where: { pjmId: mapping.priceGroupPjmId }
+      });
+
+      await prisma.pjmEnginePriceGroupMapping.upsert({
+        where: {
+          enginePriceGroupIntegrationId:
+            mapping.enginePriceGroupIntegrationId
+        },
+        update: {
+          priceEngineId: priceEngine.id,
+          priceGroupId: priceGroup.id
+        },
+        create: {
+          enginePriceGroupIntegrationId:
+            mapping.enginePriceGroupIntegrationId,
+          priceEngineId: priceEngine.id,
+          priceGroupId: priceGroup.id
+        }
+      });
+    }
 
     for (const option of engine.options) {
       const pjmOption = await prisma.pjmOption.upsert({

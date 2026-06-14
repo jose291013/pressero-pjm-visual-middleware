@@ -1,0 +1,79 @@
+export type PjmAuthenticateRequest = {
+  UserName: string;
+  Password: string;
+};
+
+export type PjmAuthenticateResponse = {
+  Token?: string;
+  token?: string;
+  AccessToken?: string;
+  accessToken?: string;
+  access_token?: string;
+};
+
+export type PjmProductEngineListMappingResponse = {
+  EnginePriceGroupIntegrationId: string;
+  PriceGroupName: string;
+};
+
+export type PjmProductEngineListItemResponse = {
+  Id: string;
+  Name: string;
+  Mappings: PjmProductEngineListMappingResponse[];
+};
+
+export type PjmProductEngineListResponse =
+  PjmProductEngineListItemResponse[];
+
+export type PjmEngineOperation = "options" | "optionsandprice";
+
+export type PjmEngineOptionValue = {
+  Name: string;
+  Value: string | number | boolean | null;
+};
+
+export type PjmEngineRequest = {
+  Operation: PjmEngineOperation;
+  Product: string;
+  Options: PjmEngineOptionValue[];
+};
+
+export type PjmEngineChoiceResponse = {
+  Id?: string;
+  Name?: string;
+  Value?: string | number | boolean | null;
+  Label?: string;
+  Text?: string;
+};
+
+export type PjmEngineOptionResponse = {
+  Id?: string;
+  Name?: string;
+  Label?: string;
+  Type?: string;
+  Values?: PjmEngineChoiceResponse[];
+  Choices?: PjmEngineChoiceResponse[];
+  Options?: PjmEngineChoiceResponse[];
+  Suppress?: boolean;
+};
+
+export type PjmEngineOptionsResponse =
+  | PjmEngineOptionResponse[]
+  | {
+      EngineOptions?: PjmEngineOptionResponse[];
+      Options?: PjmEngineOptionResponse[];
+    };
+
+export type PjmOptionsAndPriceResponse = {
+  Price?: number;
+  Weight?: number;
+  WeightUnit?: string;
+  Quantity?: number;
+  Attributes?: Array<{
+    Name?: string;
+    Value?: string | number | boolean | null;
+  }>;
+  ErrorCode?: string | number;
+  Error?: string;
+  EngineOptions?: PjmEngineOptionResponse[];
+};

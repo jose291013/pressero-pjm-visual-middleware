@@ -10,6 +10,7 @@
     "start": "node dist/server.js",
     "test:sprint1": "node scripts/test-sprint-1-foundation.mjs",
     "test:sprint2": "node scripts/test-sprint-2-pjm-sync-foundation.mjs",
+    "test:sprint3": "node scripts/test-sprint-3-pjm-contracts.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "prisma:generate": "prisma generate",

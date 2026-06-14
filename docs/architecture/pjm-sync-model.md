@@ -12,3 +12,17 @@ Sprint 2 adds the first read-only foundation:
 - no real PJM API connector.
 
 The service reads from the local database only. This keeps the future connector isolated from controllers and Pressero-facing configuration generation.
+
+Sprint 3 corrects the model for real PJM product engine responses:
+
+- a PJM product engine can have multiple price groups;
+- each pair is identified by `EnginePriceGroupIntegrationId`;
+- those pairs are stored as `PjmEnginePriceGroupMapping`;
+- `PjmPriceEngine` no longer owns a single `priceGroupId`.
+
+The next connector sprint should map `productEngines/list` responses into:
+
+- `PjmPriceEngine.pjmId` from `Id`;
+- `PjmPriceEngine.name` from `Name`;
+- `PjmPriceGroup.name` from `PriceGroupName`;
+- `PjmEnginePriceGroupMapping.enginePriceGroupIntegrationId` from `EnginePriceGroupIntegrationId`.

@@ -24,7 +24,10 @@ export type PjmSyncPriceEngineSeed = {
   description: string;
   isActive: boolean;
   categoryPjmId: string;
-  priceGroupPjmId: string;
+  mappings: Array<{
+    enginePriceGroupIntegrationId: string;
+    priceGroupPjmId: string;
+  }>;
   options: PjmSyncOptionSeed[];
 };
 

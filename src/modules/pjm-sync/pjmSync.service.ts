@@ -20,7 +20,12 @@ export async function listPjmPriceEngines() {
   return prisma.pjmPriceEngine.findMany({
     include: {
       productCategory: true,
-      priceGroup: true
+      priceGroupMappings: {
+        include: {
+          priceGroup: true
+        },
+        orderBy: [{ createdAt: "asc" }]
+      }
     },
     orderBy: [{ name: "asc" }]
   });
