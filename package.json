@@ -14,6 +14,7 @@
     "test:sprint4": "node scripts/test-sprint-4-pjm-client.mjs",
     "test:sprint5": "node scripts/test-sprint-5-pjm-sync-runner.mjs",
     "test:sprint6": "node scripts/test-sprint-6-admin-read-api.mjs",
+    "test:sprint7": "node scripts/test-sprint-7-admin-ui.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

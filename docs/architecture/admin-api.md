@@ -51,3 +51,20 @@ The first backoffice screen can use these endpoints to show:
 - engine detail;
 - mappings;
 - options and choices.
+
+## Sprint 7 UI
+
+The first static backoffice screen is served at:
+
+```http
+GET /admin
+```
+
+Static assets are served under:
+
+```http
+GET /public/admin/admin.css
+GET /public/admin/admin.js
+```
+
+The page reads only from the Sprint 6 API. It does not trigger synchronization, does not mutate mappings, and does not manage media assets yet.

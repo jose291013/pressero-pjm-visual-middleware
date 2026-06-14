@@ -63,3 +63,9 @@ GET /pjm-sync/admin/price-engines/:id
 GET /pjm-sync/admin/price-engines/:id/mappings
 GET /pjm-sync/admin/price-engines/:id/options
 ```
+
+Open the first backoffice screen:
+
+```text
+http://localhost:3000/admin
+```

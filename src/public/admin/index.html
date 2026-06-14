@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pressero PJM Admin</title>
+    <link rel="stylesheet" href="/public/admin/admin.css">
+  </head>
+  <body>
+    <div class="admin-shell">
+      <aside class="sidebar" aria-label="Navigation">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" role="img">
+              <path d="M6 7h20v6H6z"></path>
+              <path d="M6 17h12v8H6z"></path>
+              <path d="M21 17h5v8h-5z"></path>
+            </svg>
+          </div>
+          <div>
+            <strong>Pressero PJM</strong>
+            <span>Middleware</span>
+          </div>
+        </div>
+        <nav class="nav-list">
+          <a class="is-active" href="/admin">Catalogue PJM</a>
+          <a aria-disabled="true">Images</a>
+          <a aria-disabled="true">Mappings</a>
+          <a aria-disabled="true">Prix negocies</a>
+        </nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Backoffice</p>
+            <h1>Catalogue PJM</h1>
+          </div>
+          <button class="icon-button" id="refreshButton" type="button" title="Actualiser" aria-label="Actualiser">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 12a8 8 0 1 1-2.34-5.66"></path>
+              <path d="M20 4v6h-6"></path>
+            </svg>
+          </button>
+        </header>
+
+        <section class="summary-grid" aria-label="Resume du catalogue">
+          <article class="metric metric-blue">
+            <span>Moteurs</span>
+            <strong id="metricEngines">0</strong>
+          </article>
+          <article class="metric metric-green">
+            <span>Groupes</span>
+            <strong id="metricGroups">0</strong>
+          </article>
+          <article class="metric metric-amber">
+            <span>Mappings</span>
+            <strong id="metricMappings">0</strong>
+          </article>
+          <article class="metric metric-slate">
+            <span>Choix</span>
+            <strong id="metricChoices">0</strong>
+          </article>
+        </section>
+
+        <section class="workspace">
+          <div class="engine-list-panel">
+            <div class="panel-heading">
+              <h2>Moteurs</h2>
+              <input id="engineSearch" type="search" placeholder="Filtrer" aria-label="Filtrer les moteurs">
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nom</th>
+                    <th>Groupes</th>
+                    <th>Options</th>
+                  </tr>
+                </thead>
+                <tbody id="engineTableBody">
+                  <tr>
+                    <td colspan="3">Chargement</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <aside class="detail-panel" aria-live="polite">
+            <div class="panel-heading">
+              <h2 id="detailTitle">Detail moteur</h2>
+              <span class="status-pill" id="detailStatus">Pret</span>
+            </div>
+            <dl class="detail-meta">
+              <div>
+                <dt>ID PJM</dt>
+                <dd id="detailPjmId">-</dd>
+              </div>
+              <div>
+                <dt>Groupes</dt>
+                <dd id="detailMappingsCount">0</dd>
+              </div>
+              <div>
+                <dt>Options</dt>
+                <dd id="detailOptionsCount">0</dd>
+              </div>
+            </dl>
+
+            <section class="detail-section">
+              <h3>Groupes de prix</h3>
+              <ul class="mapping-list" id="mappingList"></ul>
+            </section>
+
+            <section class="detail-section">
+              <h3>Options et choix</h3>
+              <div class="option-list" id="optionList"></div>
+            </section>
+          </aside>
+        </section>
+      </main>
+    </div>
+    <script src="/public/admin/admin.js" type="module"></script>
+  </body>
+</html>
