@@ -30,3 +30,19 @@ The next connector sprint should map `productEngines/list` responses into:
 Sprint 4 adds the client boundary but still does not run a sync automatically.
 
 The `PjmClient` is a low-level integration object. Services that persist data should call it later from explicit sync scripts or endpoints, then write normalized data through Prisma.
+
+Sprint 5 adds an explicit catalog sync runner:
+
+```bash
+npm run sync:pjm
+```
+
+The runner:
+
+- calls `productEngines/list`;
+- persists engines, generated price groups and engine/group mappings;
+- calls engine options using the first available `EnginePriceGroupIntegrationId` for each engine;
+- normalizes options and choices into `PjmOption` and `PjmOptionChoice`;
+- returns a count summary and warnings.
+
+It is intentionally not mounted as an automatic server startup task.

@@ -44,3 +44,12 @@ export type PjmSyncMockDataset = {
   }>;
   priceEngines: PjmSyncPriceEngineSeed[];
 };
+
+export type PjmCatalogSyncResult = {
+  enginesProcessed: number;
+  priceGroupsProcessed: number;
+  mappingsProcessed: number;
+  optionsProcessed: number;
+  choicesProcessed: number;
+  warnings: string[];
+};

@@ -113,3 +113,15 @@ Non-responsibilities:
 - no automatic PJM call at server startup.
 
 The client accepts an injectable `fetchImpl` so tests and future sync scripts can verify payloads without calling the real PJM API.
+
+## Sprint 5 Sync Runner
+
+`npm run sync:pjm` runs the explicit catalog synchronization.
+
+The sync uses:
+
+1. `productEngines/list` to persist engines and mappings.
+2. The first `EnginePriceGroupIntegrationId` for an engine as the product id for the options request.
+3. `/public/engine` with `Operation: "options"` to persist options and choices.
+
+The runner logs a JSON summary and warning list. It does not calculate prices and does not call `optionsandprice`.

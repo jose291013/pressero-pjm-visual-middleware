@@ -47,3 +47,9 @@ Load the development mock dataset after configuring PostgreSQL:
 ```bash
 npm run seed:pjm-mock
 ```
+
+Run the real PJM catalog sync only when PJM credentials are configured:
+
+```bash
+npm run sync:pjm
+```
