@@ -4,6 +4,8 @@ const state = {
 };
 
 const els = {
+  syncButton: document.getElementById("syncButton"),
+  syncStatus: document.getElementById("syncStatus"),
   refreshButton: document.getElementById("refreshButton"),
   search: document.getElementById("engineSearch"),
   tableBody: document.getElementById("engineTableBody"),
@@ -20,10 +22,12 @@ const els = {
   optionList: document.getElementById("optionList")
 };
 
-async function getJson(url) {
+async function getJson(url, init = {}) {
   const response = await fetch(url, {
+    ...init,
     headers: {
-      Accept: "application/json"
+      Accept: "application/json",
+      ...(init.headers || {})
     }
   });
 
@@ -77,6 +81,17 @@ function html(value, fallback = "-") {
 
 function setMetric(element, value) {
   element.textContent = Number(value || 0).toLocaleString("fr-FR");
+}
+
+function setSyncStatus(message, kind = "") {
+  els.syncStatus.textContent = message;
+  els.syncStatus.classList.toggle("is-error", kind === "error");
+  els.syncStatus.classList.toggle("is-success", kind === "success");
+}
+
+function setBusyButtons(isBusy) {
+  els.refreshButton.disabled = isBusy;
+  els.syncButton.disabled = isBusy;
 }
 
 function renderSummary(summary) {
@@ -199,7 +214,7 @@ async function selectEngine(engineId) {
 }
 
 async function loadDashboard() {
-  els.refreshButton.disabled = true;
+  setBusyButtons(true);
   els.detailStatus.textContent = "Chargement";
 
   try {
@@ -227,10 +242,34 @@ async function loadDashboard() {
     renderEmptyDetail();
     els.detailStatus.textContent = "Erreur";
   } finally {
-    els.refreshButton.disabled = false;
+    setBusyButtons(false);
   }
 }
 
+async function runPjmUpdate() {
+  setBusyButtons(true);
+  setSyncStatus("Synchronisation PJM en cours");
+  els.detailStatus.textContent = "Sync";
+
+  try {
+    const response = await getJson("/pjm-sync/admin/sync", {
+      method: "POST"
+    });
+    const result = response.data || {};
+    setSyncStatus(
+      `Sync terminee: ${Number(result.enginesProcessed || 0).toLocaleString("fr-FR")} moteurs, ${Number(result.mappingsProcessed || 0).toLocaleString("fr-FR")} mappings`,
+      "success"
+    );
+    await loadDashboard();
+  } catch (error) {
+    setSyncStatus(error.message, "error");
+    els.detailStatus.textContent = "Erreur";
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+els.syncButton.addEventListener("click", runPjmUpdate);
 els.refreshButton.addEventListener("click", loadDashboard);
 els.search.addEventListener("input", renderEngineRows);
 

@@ -125,3 +125,15 @@ The sync uses:
 3. `/public/engine` with `Operation: "options"` to persist options and choices.
 
 The runner logs a JSON summary and warning list. It does not calculate prices and does not call `optionsandprice`.
+
+## Sprint 8 Admin Trigger
+
+The same catalog synchronization can be triggered from the admin UI through:
+
+```http
+POST /pjm-sync/admin/sync
+```
+
+The endpoint remains a backend-only integration point. It uses `productEngines/list` and `Operation: "options"` through the existing PJM client, then persists the normalized engines, price groups, mappings, options and choices with Prisma.
+
+It still does not call `optionsandprice`. Price calculation remains PJM/Pressero responsibility.

@@ -68,3 +68,30 @@ GET /public/admin/admin.js
 ```
 
 The page reads only from the Sprint 6 API. It does not trigger synchronization, does not mutate mappings, and does not manage media assets yet.
+
+## Sprint 8 Admin Sync Trigger
+
+The backoffice can now trigger an explicit catalog sync:
+
+```http
+POST /pjm-sync/admin/sync
+```
+
+This endpoint calls the existing PJM catalog sync service. It is explicit: the server still does not synchronize with PJM at startup.
+
+Successful response:
+
+```json
+{
+  "data": {
+    "enginesProcessed": 1,
+    "priceGroupsProcessed": 2,
+    "mappingsProcessed": 2,
+    "optionsProcessed": 2,
+    "choicesProcessed": 4,
+    "warnings": []
+  }
+}
+```
+
+If PJM credentials are missing or PJM rejects the request, the endpoint returns a JSON error that the admin UI can display.

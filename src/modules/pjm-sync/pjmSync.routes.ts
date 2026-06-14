@@ -9,13 +9,15 @@ import {
   getPjmPriceEngines,
   getPjmPriceGroups,
   getPjmProductCategories,
-  getPjmSyncStatus
+  getPjmSyncStatus,
+  postPjmSyncAdminCatalogSync
 } from "./pjmSync.controller.js";
 
 export const pjmSyncRouter = Router();
 
 pjmSyncRouter.get("/", getPjmSyncStatus);
 pjmSyncRouter.get("/admin/summary", getPjmSyncAdminSummary);
+pjmSyncRouter.post("/admin/sync", postPjmSyncAdminCatalogSync);
 pjmSyncRouter.get("/admin/price-engines", getPjmSyncAdminPriceEngines);
 pjmSyncRouter.get(
   "/admin/price-engines/:id/mappings",

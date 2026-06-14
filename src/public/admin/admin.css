@@ -59,7 +59,8 @@ input {
 }
 
 .brand-mark svg,
-.icon-button svg {
+.icon-button svg,
+.action-button svg {
   width: 20px;
   height: 20px;
   fill: none;
@@ -115,6 +116,13 @@ input {
   margin-bottom: 18px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .eyebrow {
   margin: 0 0 5px;
   color: var(--muted);
@@ -161,6 +169,47 @@ h3 {
 .icon-button:hover {
   border-color: var(--blue);
   color: var(--blue);
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.action-button:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.action-button:disabled,
+.icon-button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.sync-status {
+  max-width: 360px;
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.sync-status.is-error {
+  color: #b42318;
+}
+
+.sync-status.is-success {
+  color: #146c43;
 }
 
 .summary-grid {
@@ -433,6 +482,23 @@ tbody tr.is-selected {
   .panel-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .topbar-actions {
+    align-items: stretch;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .sync-status {
+    flex-basis: 100%;
+    max-width: none;
+    text-align: left;
   }
 
   .panel-heading input {

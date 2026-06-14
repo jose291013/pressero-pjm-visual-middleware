@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { createPjmClientFromEnv } from "./pjmClient.js";
 import {
   getPjmSyncAdminPriceEngine as getPjmSyncAdminPriceEngineFromStore,
   getPjmSyncAdminSummary as getPjmSyncAdminSummaryFromStore,
@@ -12,6 +13,7 @@ import {
   listPjmPriceGroups,
   listPjmProductCategories
 } from "./pjmSync.service.js";
+import { syncPjmCatalog } from "./pjmSyncCatalog.service.js";
 
 export function getPjmSyncStatus(_req: Request, res: Response) {
   res.status(200).json({
@@ -54,6 +56,21 @@ export async function getPjmPriceEngineOptions(req: Request, res: Response) {
 export async function getPjmSyncAdminSummary(_req: Request, res: Response) {
   const summary = await getPjmSyncAdminSummaryFromStore();
   res.status(200).json({ data: summary });
+}
+
+export async function postPjmSyncAdminCatalogSync(
+  _req: Request,
+  res: Response
+) {
+  try {
+    const result = await syncPjmCatalog(createPjmClientFromEnv());
+    res.status(200).json({ data: result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(500).json({
+      error: message
+    });
+  }
 }
 
 export async function getPjmSyncAdminPriceEngines(

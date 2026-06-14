@@ -54,6 +54,12 @@ Run the real PJM catalog sync only when PJM credentials are configured:
 npm run sync:pjm
 ```
 
+The same sync can be launched from the backoffice:
+
+```text
+POST /pjm-sync/admin/sync
+```
+
 Backoffice-ready read endpoints are available under:
 
 ```text
