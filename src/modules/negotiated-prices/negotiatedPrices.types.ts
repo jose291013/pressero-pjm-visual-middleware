@@ -38,6 +38,13 @@ export type NegotiatedPriceCompatibilityValidationResult = {
   incompatibleCombinationKeys: string[];
 };
 
+export type NegotiatedPriceCompatibilityExportFilter = {
+  rawCombinationCount: number;
+  compatibleCombinationCount: number;
+  incompatibleCombinationCount: number;
+  compatibleCombinationKeys: string[];
+};
+
 export type NegotiatedPriceChoiceSelection = {
   choiceId: string;
   choiceName: string;
@@ -74,6 +81,7 @@ export type NegotiatedPriceCombinationInput = {
   priceGroupName: string;
   quantityTiersText: string;
   pricingBasis?: NegotiatedPricePricingBasis;
+  compatibilityFilter?: NegotiatedPriceCompatibilityExportFilter;
   optionSelections: NegotiatedPriceOptionSelection[];
 };
 
@@ -116,6 +124,8 @@ export type NegotiatedPriceExcelPlan = {
   enginePriceGroupIntegrationId: string;
   priceGroupName: string;
   pricingBasis: NegotiatedPricePricingBasis;
+  rawCombinationCount: number;
+  compatibilityFilter: NegotiatedPriceCompatibilityExportFilter | null;
   quantities: number[];
   combinationCount: number;
   columns: NegotiatedPriceExcelColumn[];

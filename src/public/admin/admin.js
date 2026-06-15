@@ -3,7 +3,8 @@ const state = {
   organizations: [],
   selectedEngineId: null,
   negotiatedEngine: null,
-  negotiatedOptions: []
+  negotiatedOptions: [],
+  negotiatedCompatibility: null
 };
 
 const els = {
@@ -472,6 +473,7 @@ function insertFormulaToken() {
   input.focus();
   input.selectionStart = start + token.length;
   input.selectionEnd = start + token.length;
+  clearNegotiatedCompatibility();
 }
 
 function collectSelectedChoiceKeys() {
@@ -590,6 +592,7 @@ function updateNegotiatedSelectedCount() {
 
 async function refreshCompatibleNegotiatedOptions() {
   updateNegotiatedSelectedCount();
+  clearNegotiatedCompatibility();
   const selectedChoiceKeys = collectSelectedChoiceKeys();
 
   if (!state.negotiatedEngine || !els.npPriceGroupSelect.value) {
@@ -695,12 +698,21 @@ function buildPreviewPayload() {
   };
 }
 
+function buildPayloadSignature(payload) {
+  return JSON.stringify(payload);
+}
+
+function clearNegotiatedCompatibility() {
+  state.negotiatedCompatibility = null;
+  els.npCompatibleCount.textContent = "-";
+  els.npIncompatibleCount.textContent = "-";
+}
+
 function renderPreview(plan) {
   els.npCombinationCount.textContent = `${Number(plan.combinationCount || 0).toLocaleString("fr-FR")} lignes`;
   els.npTierCount.textContent = Number(plan.quantities?.length || 0).toLocaleString("fr-FR");
   els.npColumnCount.textContent = Number(plan.columns?.length || 0).toLocaleString("fr-FR");
-  els.npCompatibleCount.textContent = "-";
-  els.npIncompatibleCount.textContent = "-";
+  clearNegotiatedCompatibility();
   els.npPreviewColumns.innerHTML = "";
 
   for (const column of plan.columns ?? []) {
@@ -727,6 +739,46 @@ function renderCompatibilityValidation(result) {
     <span class="column-chip is-negotiated">${html(rawCount)} combinaisons brutes</span>
     <span class="column-chip is-price">${html(requestCount)} appels PJM</span>
   `;
+}
+
+async function requestCompatibilityValidation(payload) {
+  const response = await getJson("/negotiated-prices/validate-combinations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  const signature = buildPayloadSignature(payload);
+  state.negotiatedCompatibility = {
+    signature,
+    result: response.data
+  };
+  renderCompatibilityValidation(response.data);
+  return response.data;
+}
+
+async function ensureCompatibilityValidation(payload) {
+  const signature = buildPayloadSignature(payload);
+
+  if (state.negotiatedCompatibility?.signature === signature) {
+    return state.negotiatedCompatibility.result;
+  }
+
+  els.negotiatedStatus.textContent = "Verification";
+  return requestCompatibilityValidation(payload);
+}
+
+function buildExportPayload(payload, validation) {
+  return {
+    ...payload,
+    compatibilityFilter: {
+      rawCombinationCount: validation.rawCombinationCount,
+      compatibleCombinationCount: validation.compatibleCombinationCount,
+      incompatibleCombinationCount: validation.incompatibleCombinationCount,
+      compatibleCombinationKeys: validation.compatibleCombinationKeys
+    }
+  };
 }
 
 async function previewNegotiatedPrices() {
@@ -756,14 +808,7 @@ async function validateNegotiatedCompatibility() {
   setBusyButtons(true);
 
   try {
-    const response = await getJson("/negotiated-prices/validate-combinations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(buildPreviewPayload())
-    });
-    renderCompatibilityValidation(response.data);
+    await requestCompatibilityValidation(buildPreviewPayload());
     els.negotiatedStatus.textContent = "Pret";
   } catch (error) {
     els.negotiatedStatus.textContent = "Erreur";
@@ -784,13 +829,21 @@ async function exportNegotiatedPrices() {
   setBusyButtons(true);
 
   try {
+    const payload = buildPreviewPayload();
+    const validation = await ensureCompatibilityValidation(payload);
+
+    if (!validation.compatibleCombinationCount) {
+      throw new Error("Aucune combinaison compatible a exporter.");
+    }
+
+    els.negotiatedStatus.textContent = "Export";
     const response = await fetch("/negotiated-prices/export", {
       method: "POST",
       headers: {
         Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(buildPreviewPayload())
+      body: JSON.stringify(buildExportPayload(payload, validation))
     });
 
     if (!response.ok) {
@@ -886,6 +939,16 @@ els.npPriceGroupSelect.addEventListener("change", () => {
   state.negotiatedOptions = [];
   renderPreview({ columns: [], quantities: [], combinationCount: 0 });
   refreshCompatibleNegotiatedOptions();
+});
+[
+  els.npClientId,
+  els.npOrganizationName,
+  els.npQuantityTiers,
+  els.npPricingMode,
+  els.npTierFormula
+].forEach((field) => {
+  field.addEventListener("input", clearNegotiatedCompatibility);
+  field.addEventListener("change", clearNegotiatedCompatibility);
 });
 els.npInsertFormulaToken.addEventListener("click", insertFormulaToken);
 els.npPreviewButton.addEventListener("click", previewNegotiatedPrices);

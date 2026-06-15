@@ -114,6 +114,20 @@ This creates a measurable split between:
 
 This sprint intentionally does not change the workbook rows yet. The next Excel/import sprint should use the compatible keys as the allowed row set before saving negotiated prices.
 
+## Sprint 17 Compatible XLSX Export
+
+The XLSX export can now receive a `compatibilityFilter` produced by the Sprint 16 validation flow.
+
+When the filter is present, the workbook includes uniquement les lignes compatibles. The excluded rows are not written to the editable `Prix negocies` sheet.
+
+The `Aide` sheet records:
+
+- raw combinations;
+- exported compatible combinations;
+- excluded combinations.
+
+The backend checks that the filter still matches the current generated combination set before exporting. If the admin changes selected choices, pricing basis or quantity tiers after verification, the UI must run validation again before export.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.

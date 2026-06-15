@@ -115,7 +115,10 @@ function choiceIsAvailable(
 export async function validateNegotiatedPriceCompatibility(
   input: NegotiatedPriceCombinationInput
 ): Promise<NegotiatedPriceCompatibilityValidationResult> {
-  const plan = buildNegotiatedPriceExcelPlan(input);
+  const plan = buildNegotiatedPriceExcelPlan({
+    ...input,
+    compatibilityFilter: undefined
+  });
   const enginePriceGroupIntegrationId =
     input.enginePriceGroupIntegrationId?.trim();
 

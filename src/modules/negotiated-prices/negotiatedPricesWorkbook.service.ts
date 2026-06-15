@@ -226,11 +226,20 @@ function addHelpSheet(workbook: ExcelJS.Workbook, plan: NegotiatedPriceExcelPlan
     ["Organisation ID", plan.clientId],
     ["Mode palier", plan.pricingBasis.mode === "areaM2" ? "m2" : "quantite"],
     ["Formule palier", plan.pricingBasis.formula || "(vide)"],
-    ["Nombre de lignes", plan.combinationCount],
+    ["Combinaisons brutes", plan.rawCombinationCount],
+    ["Combinaisons exportees", plan.combinationCount],
+    [
+      "Combinaisons exclues",
+      plan.compatibilityFilter?.incompatibleCombinationCount ?? 0
+    ],
     ["Paliers", plan.quantities.join(", ")],
     [
-      "Sprint 15",
-      "Le mode de palier et la formule sont exportes. Les colonnes Prix PJM et Prix negocie restent vides."
+      "Sprint 17",
+      "L'export contient uniquement les combinaisons compatibles quand une verification PJM est fournie."
+    ],
+    [
+      "Colonnes de prix",
+      "Les colonnes Prix PJM et Prix negocie sont conservees pour chaque palier exporte."
     ],
     [
       "Colonnes techniques",

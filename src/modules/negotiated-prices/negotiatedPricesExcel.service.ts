@@ -6,6 +6,7 @@ import type {
   NegotiatedPriceCombinationInput,
   NegotiatedPriceExcelColumn,
   NegotiatedPriceExcelPlan,
+  NegotiatedPriceCompatibilityExportFilter,
   NegotiatedPricePricingBasis
 } from "./negotiatedPrices.types.js";
 
@@ -28,6 +29,25 @@ function normalizePricingBasis(
     mode: input.pricingBasis?.mode === "areaM2" ? "areaM2" : "quantity",
     formula: input.pricingBasis?.formula?.trim() ?? "",
     parameters: input.pricingBasis?.parameters ?? []
+  };
+}
+
+function normalizeCompatibilityFilter(
+  input: NegotiatedPriceCombinationInput
+): NegotiatedPriceCompatibilityExportFilter | null {
+  const filter = input.compatibilityFilter;
+
+  if (!filter) {
+    return null;
+  }
+
+  return {
+    rawCombinationCount: Number(filter.rawCombinationCount || 0),
+    compatibleCombinationCount: Number(filter.compatibleCombinationCount || 0),
+    incompatibleCombinationCount: Number(filter.incompatibleCombinationCount || 0),
+    compatibleCombinationKeys: Array.from(
+      new Set((filter.compatibleCombinationKeys ?? []).filter(Boolean))
+    )
   };
 }
 
@@ -65,9 +85,30 @@ export function buildNegotiatedPriceExcelPlan(
   const pricingBasis = normalizePricingBasis(input);
   const normalizedInput: NegotiatedPriceCombinationInput = {
     ...input,
-    pricingBasis
+    pricingBasis,
+    compatibilityFilter: undefined
   };
-  const rows = buildChoiceCombinations(normalizedInput, quantities);
+  const rawRows = buildChoiceCombinations(normalizedInput, quantities);
+  const compatibilityFilter = normalizeCompatibilityFilter(input);
+  const rows = compatibilityFilter
+    ? rawRows.filter((row) => {
+        return compatibilityFilter.compatibleCombinationKeys.includes(row.combinationKey);
+      })
+    : rawRows;
+
+  if (
+    compatibilityFilter &&
+    compatibilityFilter.rawCombinationCount !== rawRows.length
+  ) {
+    throw new Error("Compatibility filter does not match the current combination count.");
+  }
+
+  if (
+    compatibilityFilter &&
+    compatibilityFilter.compatibleCombinationCount !== rows.length
+  ) {
+    throw new Error("Compatibility filter does not match the current compatible rows.");
+  }
 
   return {
     clientId: input.clientId,
@@ -77,6 +118,8 @@ export function buildNegotiatedPriceExcelPlan(
     enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
     priceGroupName: input.priceGroupName,
     pricingBasis,
+    rawCombinationCount: rawRows.length,
+    compatibilityFilter,
     quantities,
     combinationCount: rows.length,
     columns: [

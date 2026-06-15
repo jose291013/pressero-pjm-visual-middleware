@@ -201,3 +201,17 @@ The request uses the same payload as preview/export. The backend builds the raw 
 - compatible and incompatible combination keys.
 
 The admin UI exposes this through the `Verifier` button. This endpoint does not mutate stored data and does not change XLSX export yet.
+
+## Sprint 17 Compatible XLSX Export
+
+`Exporter Excel` now exports compatible rows only.
+
+If the current form has already been verified and has not changed, the admin UI reuses the compatibility result. Otherwise it runs the same compatibility verification automatically before calling:
+
+```http
+POST /negotiated-prices/export
+```
+
+The export payload includes a `compatibilityFilter` with raw counts and compatible combination keys. The backend rejects stale filters that no longer match the current payload.
+
+The workbook `Aide` sheet records raw combinations, exported combinations and excluded combinations.
