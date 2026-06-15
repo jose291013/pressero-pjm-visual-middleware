@@ -100,6 +100,20 @@ The workbook adds visible `Mode palier` and `Formule palier` columns, plus a hid
 
 The stable combination hashes now include the tier mode and formula. This prevents an area-based negotiated price from sharing a reference with a quantity-based negotiated price that happens to use the same option choices.
 
+## Sprint 16 Compatible Combination Validation
+
+The admin can now verify whether the selected Cartesian product contains only PJM-compatible paths.
+
+The validation endpoint uses the preview/export payload, generates the same raw rows, then walks each row through PJM compatible options. A row is compatible only when every next selected choice is still available after the previous selections have been sent to PJM.
+
+This creates a measurable split between:
+
+- raw selected combinations;
+- combinaisons compatibles;
+- excluded combinations.
+
+This sprint intentionally does not change the workbook rows yet. The next Excel/import sprint should use the compatible keys as the allowed row set before saving negotiated prices.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.

@@ -29,6 +29,15 @@ export type NegotiatedPriceCompatibleOptionsResult = {
   options: NegotiatedPriceCompatibleOption[];
 };
 
+export type NegotiatedPriceCompatibilityValidationResult = {
+  rawCombinationCount: number;
+  compatibleCombinationCount: number;
+  incompatibleCombinationCount: number;
+  pjmRequestCount: number;
+  compatibleCombinationKeys: string[];
+  incompatibleCombinationKeys: string[];
+};
+
 export type NegotiatedPriceChoiceSelection = {
   choiceId: string;
   choiceName: string;

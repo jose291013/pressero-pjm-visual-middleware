@@ -3,7 +3,8 @@ import {
   getNegotiatedPricesStatus,
   postNegotiatedPricesCompatibleOptions,
   postNegotiatedPricesExport,
-  postNegotiatedPricesPreview
+  postNegotiatedPricesPreview,
+  postNegotiatedPricesValidateCombinations
 } from "./negotiatedPrices.controller.js";
 
 export const negotiatedPricesRouter = Router();
@@ -14,4 +15,8 @@ negotiatedPricesRouter.post("/export", postNegotiatedPricesExport);
 negotiatedPricesRouter.post(
   "/compatible-options",
   postNegotiatedPricesCompatibleOptions
+);
+negotiatedPricesRouter.post(
+  "/validate-combinations",
+  postNegotiatedPricesValidateCombinations
 );

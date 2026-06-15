@@ -2,7 +2,8 @@ import type { Request, Response } from "express";
 import {
   exportNegotiatedPriceWorkbook,
   listCompatiblePjmOptions,
-  previewNegotiatedPriceExcelPlan
+  previewNegotiatedPriceExcelPlan,
+  validateNegotiatedPriceCompatibility
 } from "./negotiatedPrices.service.js";
 import type {
   NegotiatedPriceCombinationInput,
@@ -73,6 +74,21 @@ export async function postNegotiatedPricesCompatibleOptions(
   try {
     const result = await listCompatiblePjmOptions(
       readCompatibleOptionsInput(req.body)
+    );
+    res.status(200).json({ data: result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(400).json({ error: message });
+  }
+}
+
+export async function postNegotiatedPricesValidateCombinations(
+  req: Request,
+  res: Response
+) {
+  try {
+    const result = await validateNegotiatedPriceCompatibility(
+      readPreviewInput(req.body)
     );
     res.status(200).json({ data: result });
   } catch (error) {

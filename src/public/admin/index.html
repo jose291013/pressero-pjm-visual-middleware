@@ -228,6 +228,12 @@
                   </svg>
                   Previsualiser
                 </button>
+                <button class="action-button" id="npValidateButton" type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5"></path>
+                  </svg>
+                  Verifier
+                </button>
                 <button class="action-button" id="npExportButton" type="button">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M12 3v12"></path>
@@ -262,6 +268,14 @@
                 <div>
                   <dt>Colonnes</dt>
                   <dd id="npColumnCount">0</dd>
+                </div>
+                <div>
+                  <dt>Compatibles</dt>
+                  <dd id="npCompatibleCount">-</dd>
+                </div>
+                <div>
+                  <dt>Exclues</dt>
+                  <dd id="npIncompatibleCount">-</dd>
                 </div>
               </dl>
               <div class="preview-columns" id="npPreviewColumns">

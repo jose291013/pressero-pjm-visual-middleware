@@ -40,12 +40,15 @@ const els = {
   npFormulaTokenSelect: document.getElementById("npFormulaTokenSelect"),
   npInsertFormulaToken: document.getElementById("npInsertFormulaToken"),
   npPreviewButton: document.getElementById("npPreviewButton"),
+  npValidateButton: document.getElementById("npValidateButton"),
   npExportButton: document.getElementById("npExportButton"),
   npOptionPicker: document.getElementById("npOptionPicker"),
   npSelectedCount: document.getElementById("npSelectedCount"),
   npCombinationCount: document.getElementById("npCombinationCount"),
   npTierCount: document.getElementById("npTierCount"),
   npColumnCount: document.getElementById("npColumnCount"),
+  npCompatibleCount: document.getElementById("npCompatibleCount"),
+  npIncompatibleCount: document.getElementById("npIncompatibleCount"),
   npPreviewColumns: document.getElementById("npPreviewColumns")
 };
 
@@ -119,6 +122,9 @@ function setSyncStatus(message, kind = "") {
 function setBusyButtons(isBusy) {
   els.refreshButton.disabled = isBusy;
   els.syncButton.disabled = isBusy;
+  els.npPreviewButton.disabled = isBusy;
+  els.npValidateButton.disabled = isBusy;
+  els.npExportButton.disabled = isBusy;
 }
 
 function setView(viewName) {
@@ -693,6 +699,8 @@ function renderPreview(plan) {
   els.npCombinationCount.textContent = `${Number(plan.combinationCount || 0).toLocaleString("fr-FR")} lignes`;
   els.npTierCount.textContent = Number(plan.quantities?.length || 0).toLocaleString("fr-FR");
   els.npColumnCount.textContent = Number(plan.columns?.length || 0).toLocaleString("fr-FR");
+  els.npCompatibleCount.textContent = "-";
+  els.npIncompatibleCount.textContent = "-";
   els.npPreviewColumns.innerHTML = "";
 
   for (const column of plan.columns ?? []) {
@@ -705,8 +713,25 @@ function renderPreview(plan) {
   }
 }
 
+function renderCompatibilityValidation(result) {
+  els.npCompatibleCount.textContent = Number(
+    result.compatibleCombinationCount || 0
+  ).toLocaleString("fr-FR");
+  els.npIncompatibleCount.textContent = Number(
+    result.incompatibleCombinationCount || 0
+  ).toLocaleString("fr-FR");
+
+  const rawCount = Number(result.rawCombinationCount || 0).toLocaleString("fr-FR");
+  const requestCount = Number(result.pjmRequestCount || 0).toLocaleString("fr-FR");
+  els.npPreviewColumns.innerHTML = `
+    <span class="column-chip is-negotiated">${html(rawCount)} combinaisons brutes</span>
+    <span class="column-chip is-price">${html(requestCount)} appels PJM</span>
+  `;
+}
+
 async function previewNegotiatedPrices() {
   els.negotiatedStatus.textContent = "Preview";
+  setBusyButtons(true);
 
   try {
     const response = await getJson("/negotiated-prices/preview", {
@@ -721,6 +746,30 @@ async function previewNegotiatedPrices() {
   } catch (error) {
     els.negotiatedStatus.textContent = "Erreur";
     els.npPreviewColumns.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+async function validateNegotiatedCompatibility() {
+  els.negotiatedStatus.textContent = "Verification";
+  setBusyButtons(true);
+
+  try {
+    const response = await getJson("/negotiated-prices/validate-combinations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(buildPreviewPayload())
+    });
+    renderCompatibilityValidation(response.data);
+    els.negotiatedStatus.textContent = "Pret";
+  } catch (error) {
+    els.negotiatedStatus.textContent = "Erreur";
+    els.npPreviewColumns.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  } finally {
+    setBusyButtons(false);
   }
 }
 
@@ -732,6 +781,7 @@ function readDownloadFileName(response) {
 
 async function exportNegotiatedPrices() {
   els.negotiatedStatus.textContent = "Export";
+  setBusyButtons(true);
 
   try {
     const response = await fetch("/negotiated-prices/export", {
@@ -761,6 +811,8 @@ async function exportNegotiatedPrices() {
   } catch (error) {
     els.negotiatedStatus.textContent = "Erreur";
     els.npPreviewColumns.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  } finally {
+    setBusyButtons(false);
   }
 }
 
@@ -837,6 +889,7 @@ els.npPriceGroupSelect.addEventListener("change", () => {
 });
 els.npInsertFormulaToken.addEventListener("click", insertFormulaToken);
 els.npPreviewButton.addEventListener("click", previewNegotiatedPrices);
+els.npValidateButton.addEventListener("click", validateNegotiatedCompatibility);
 els.npExportButton.addEventListener("click", exportNegotiatedPrices);
 els.viewLinks.forEach((link) => {
   link.addEventListener("click", (event) => {

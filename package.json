@@ -23,6 +23,7 @@
     "test:sprint13": "node scripts/test-sprint-13-compatible-option-flow.mjs",
     "test:sprint14": "node scripts/test-sprint-14-negotiated-prices-xlsx-export.mjs",
     "test:sprint15": "node scripts/test-sprint-15-pricing-basis-formula.mjs",
+    "test:sprint16": "node scripts/test-sprint-16-compatible-combination-validation.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

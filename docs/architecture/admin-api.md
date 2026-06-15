@@ -183,3 +183,21 @@ The negotiated-prices preview and export payloads can now include a `pricingBasi
 The admin UI builds the formula parameter dropdown from compatible PJM options that have no fixed choices. `quantity` mode remains compatible with a blank formula. `areaM2` mode requires a formula before preview/export.
 
 The generated preview and workbook include `Mode palier` and `Formule palier`. Formula evaluation and PJM `optionsandprice` calls are deferred to a later sprint.
+
+## Sprint 16 Compatible Combination Validation
+
+The negotiated-prices admin screen can verify the selected combination perimeter against PJM compatibility:
+
+```http
+POST /negotiated-prices/validate-combinations
+```
+
+The request uses the same payload as preview/export. The backend builds the raw combination plan, walks each row through PJM `Operation: "options"` and returns:
+
+- raw combination count;
+- compatible combination count;
+- incompatible combination count;
+- PJM request count;
+- compatible and incompatible combination keys.
+
+The admin UI exposes this through the `Verifier` button. This endpoint does not mutate stored data and does not change XLSX export yet.
