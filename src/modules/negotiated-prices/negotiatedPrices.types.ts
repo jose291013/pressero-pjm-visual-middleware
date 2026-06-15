@@ -121,6 +121,34 @@ export type NegotiatedPriceWorkbookExport = {
   buffer: Buffer;
 };
 
+export type NegotiatedPriceDirectTierPreview = {
+  quantity: number;
+  pjmPrice: number | null;
+  warning?: string;
+};
+
+export type NegotiatedPriceDirectPreviewResult = {
+  rowCount: number;
+  tiers: NegotiatedPriceDirectTierPreview[];
+  warnings: string[];
+};
+
+export type NegotiatedPriceDirectPriceInput = {
+  quantity: number;
+  pjmPrice?: number | null;
+  negotiatedPrice?: number | null;
+};
+
+export type NegotiatedPriceDirectSaveInput = NegotiatedPriceCombinationInput & {
+  directPrices: NegotiatedPriceDirectPriceInput[];
+};
+
+export type NegotiatedPriceDirectSaveResult = {
+  misId: string;
+  profileId: string;
+  rowsSaved: number;
+};
+
 export type NegotiatedPriceExcelPlan = {
   clientId: string;
   organizationName: string | null;

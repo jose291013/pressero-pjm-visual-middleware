@@ -1,3 +1,5 @@
+import { createHash, randomBytes } from "node:crypto";
+import { prisma } from "../../config/prisma.js";
 import { buildNegotiatedPriceExcelPlan } from "./negotiatedPricesExcel.service.js";
 import { buildNegotiatedPriceWorkbookExport } from "./negotiatedPricesWorkbook.service.js";
 import { createPjmClientFromEnv } from "../pjm-sync/pjmClient.js";
@@ -13,6 +15,9 @@ import type {
   NegotiatedPriceCompatibleOption,
   NegotiatedPriceCombinationChoice,
   NegotiatedPriceCombinationInput,
+  NegotiatedPriceDirectPreviewResult,
+  NegotiatedPriceDirectSaveInput,
+  NegotiatedPriceDirectSaveResult,
   NegotiatedPriceExcelPlan,
   NegotiatedPriceWorkbookExport
 } from "./negotiatedPrices.types.js";
@@ -31,6 +36,228 @@ export function exportNegotiatedPriceWorkbook(
   input: NegotiatedPriceCombinationInput
 ): Promise<NegotiatedPriceWorkbookExport> {
   return buildNegotiatedPriceWorkbookExport(input);
+}
+
+function hashJson(value: unknown): string {
+  return createHash("sha256")
+    .update(JSON.stringify(value))
+    .digest("hex");
+}
+
+function slugify(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 28)
+    .toUpperCase() || "PRICE";
+}
+
+function generateMisId(input: NegotiatedPriceCombinationInput) {
+  const engine = slugify(input.priceEngineName);
+  const client = slugify(input.organizationName || input.clientId).slice(0, 14);
+  const suffix = randomBytes(3).toString("hex").toUpperCase();
+  return `MIS-${client}-${engine}-${suffix}`;
+}
+
+function readSingleCombinationRow(input: NegotiatedPriceCombinationInput) {
+  const plan = buildNegotiatedPriceExcelPlan({
+    ...input,
+    compatibilityFilter: undefined
+  });
+
+  if (plan.rows.length !== 1) {
+    throw new Error("La saisie directe requiert une seule combinaison.");
+  }
+
+  return {
+    plan,
+    row: plan.rows[0]
+  };
+}
+
+function buildFixedEngineValues(input: NegotiatedPriceCombinationInput) {
+  const values = input.optionSelections.flatMap((option) => {
+    return option.choices.slice(0, 1).map((choice) => ({
+      Key: option.pjmKey,
+      Value: choice.pjmValue
+    }));
+  });
+
+  for (const parameter of input.pricingBasis?.parameters ?? []) {
+    if (parameter.role !== "clientVariable") {
+      values.push({
+        Key: parameter.pjmKey,
+        Value: parameter.fixedValue ?? ""
+      });
+    }
+  }
+
+  return values;
+}
+
+function readClientVariableParameters(input: NegotiatedPriceCombinationInput) {
+  return (input.pricingBasis?.parameters ?? []).filter((parameter) => {
+    return parameter.role === "clientVariable";
+  });
+}
+
+function readPjmPrice(response: unknown): number | null {
+  if (!response || typeof response !== "object") return null;
+  const value = (response as { Price?: unknown; price?: unknown }).Price ??
+    (response as { price?: unknown }).price;
+  const price = Number(value);
+  return Number.isFinite(price) ? price : null;
+}
+
+function readPjmWarning(response: unknown): string | undefined {
+  if (!response || typeof response !== "object") return undefined;
+  const error = (response as { Error?: unknown; error?: unknown }).Error ??
+    (response as { error?: unknown }).error;
+  const errorCode =
+    (response as { ErrorCode?: unknown; errorCode?: unknown }).ErrorCode ??
+    (response as { errorCode?: unknown }).errorCode;
+
+  if (error) return String(error);
+  if (errorCode) return `PJM ErrorCode ${String(errorCode)}`;
+  return undefined;
+}
+
+export async function previewDirectNegotiatedPrices(
+  input: NegotiatedPriceCombinationInput
+): Promise<NegotiatedPriceDirectPreviewResult> {
+  const { plan } = readSingleCombinationRow(input);
+  const clientVariables = readClientVariableParameters(input);
+  const warnings: string[] = [];
+
+  if (clientVariables.length !== 1) {
+    const message =
+      "Le calcul PJM direct requiert exactement une variable client pour affecter les paliers.";
+    return {
+      rowCount: plan.rows.length,
+      tiers: plan.quantities.map((quantity) => ({
+        quantity,
+        pjmPrice: null,
+        warning: message
+      })),
+      warnings: [message]
+    };
+  }
+
+  const client = createPjmClientFromEnv();
+  const fixedValues = buildFixedEngineValues(input);
+  const tierVariable = clientVariables[0];
+  const tiers = [];
+
+  for (const quantity of plan.quantities) {
+    const response = await client.getOptionsAndPrice(
+      input.enginePriceGroupIntegrationId,
+      [
+        ...fixedValues,
+        {
+          Key: tierVariable.pjmKey,
+          Value: quantity
+        }
+      ]
+    );
+    const warning = readPjmWarning(response);
+    if (warning) warnings.push(`${quantity}: ${warning}`);
+    tiers.push({
+      quantity,
+      pjmPrice: readPjmPrice(response),
+      warning
+    });
+  }
+
+  return {
+    rowCount: plan.rows.length,
+    tiers,
+    warnings
+  };
+}
+
+function assertValidDirectPrices(input: NegotiatedPriceDirectSaveInput) {
+  if (!input.directPrices.length) {
+    throw new Error("Aucun prix negocie a enregistrer.");
+  }
+
+  for (const price of input.directPrices) {
+    if (!Number.isSafeInteger(Number(price.quantity)) || Number(price.quantity) <= 0) {
+      throw new Error("Chaque prix direct doit avoir un palier valide.");
+    }
+
+    if (price.negotiatedPrice === null || price.negotiatedPrice === undefined) {
+      throw new Error(`Prix negocie manquant pour le palier ${price.quantity}.`);
+    }
+
+    if (!Number.isFinite(Number(price.negotiatedPrice))) {
+      throw new Error(`Prix negocie invalide pour le palier ${price.quantity}.`);
+    }
+  }
+}
+
+export async function saveDirectNegotiatedPrices(
+  input: NegotiatedPriceDirectSaveInput
+): Promise<NegotiatedPriceDirectSaveResult> {
+  assertValidDirectPrices(input);
+  const { plan, row } = readSingleCombinationRow(input);
+  const quantities = new Set(plan.quantities);
+
+  for (const price of input.directPrices) {
+    if (!quantities.has(Number(price.quantity))) {
+      throw new Error(`Le palier ${price.quantity} ne fait pas partie de la preview.`);
+    }
+  }
+
+  const misId = generateMisId(input);
+  const optionChoiceSignature = JSON.stringify({
+    misId,
+    priceEngineId: input.priceEngineId,
+    priceEngineName: input.priceEngineName,
+    enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
+    priceGroupName: input.priceGroupName,
+    pricingBasis: plan.pricingBasis,
+    choices: row.choices
+  });
+
+  const result = await prisma.$transaction(async (tx) => {
+    const profile = await tx.negotiatedPriceProfile.create({
+      data: {
+        clientId: input.clientId,
+        name: misId,
+        priceEngineId: input.priceEngineId
+      }
+    });
+
+    for (const price of input.directPrices) {
+      await tx.negotiatedPriceCombinationSet.create({
+        data: {
+          profileId: profile.id,
+          quantity: Number(price.quantity),
+          optionChoiceSignature,
+          combinationHash: hashJson({
+            misId,
+            combinationKey: row.combinationKey,
+            quantity: Number(price.quantity)
+          }),
+          pjmPrice:
+            price.pjmPrice === null || price.pjmPrice === undefined
+              ? null
+              : Number(price.pjmPrice),
+          negotiatedPrice: Number(price.negotiatedPrice)
+        }
+      });
+    }
+
+    return profile;
+  });
+
+  return {
+    misId,
+    profileId: result.id,
+    rowsSaved: input.directPrices.length
+  };
 }
 
 function buildSelectionsCacheKey(

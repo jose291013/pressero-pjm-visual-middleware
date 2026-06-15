@@ -3,11 +3,14 @@ import {
   exportNegotiatedPriceWorkbook,
   listCompatiblePjmOptions,
   previewNegotiatedPriceExcelPlan,
+  previewDirectNegotiatedPrices,
+  saveDirectNegotiatedPrices,
   validateNegotiatedPriceCompatibility
 } from "./negotiatedPrices.service.js";
 import type {
   NegotiatedPriceCombinationInput,
-  NegotiatedPriceCompatibleOptionsInput
+  NegotiatedPriceCompatibleOptionsInput,
+  NegotiatedPriceDirectSaveInput
 } from "./negotiatedPrices.types.js";
 
 export function getNegotiatedPricesStatus(_req: Request, res: Response) {
@@ -24,6 +27,14 @@ function readPreviewInput(value: unknown): NegotiatedPriceCombinationInput {
   }
 
   return value as NegotiatedPriceCombinationInput;
+}
+
+function readDirectSaveInput(value: unknown): NegotiatedPriceDirectSaveInput {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("Request body must be an object.");
+  }
+
+  return value as NegotiatedPriceDirectSaveInput;
 }
 
 function readCompatibleOptionsInput(
@@ -89,6 +100,36 @@ export async function postNegotiatedPricesValidateCombinations(
   try {
     const result = await validateNegotiatedPriceCompatibility(
       readPreviewInput(req.body)
+    );
+    res.status(200).json({ data: result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(400).json({ error: message });
+  }
+}
+
+export async function postNegotiatedPricesDirectPreview(
+  req: Request,
+  res: Response
+) {
+  try {
+    const result = await previewDirectNegotiatedPrices(
+      readPreviewInput(req.body)
+    );
+    res.status(200).json({ data: result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(400).json({ error: message });
+  }
+}
+
+export async function postNegotiatedPricesDirectSave(
+  req: Request,
+  res: Response
+) {
+  try {
+    const result = await saveDirectNegotiatedPrices(
+      readDirectSaveInput(req.body)
     );
     res.status(200).json({ data: result });
   } catch (error) {

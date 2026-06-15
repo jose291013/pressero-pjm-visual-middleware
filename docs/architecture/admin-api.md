@@ -228,3 +228,18 @@ The formula decides how each free parameter is handled:
 The admin must enter fixed values before preview/export. These values are included in `pricingBasis.parameters` and later become fixed PJM engine values for price calculation and job creation.
 
 The option picker now presents one choice per PJM option in the admin path, while PJM still supplies the next compatible option list.
+
+## Sprint 19 Direct Negotiated Prices
+
+The negotiated-prices admin screen can now create a single negotiated price reference without Excel.
+
+New endpoints:
+
+```http
+POST /negotiated-prices/direct-preview
+POST /negotiated-prices/direct-save
+```
+
+`direct-preview` calls PJM `optionsandprice` for each tier when the pricing basis has exactly one client variable. `direct-save` persists one negotiated profile and one tier row per negotiated price, then returns a generated `MISID`.
+
+The `MISID` is the future reference that Pressero will send to the middleware to retrieve the correct negotiated form and price behavior.

@@ -148,6 +148,21 @@ The workbook help sheet summarizes both `Variables client` and `Parametres fixes
 
 The stable combination hash includes these parameter roles and fixed values, so negotiated prices cannot collide across different locked values such as page counts.
 
+## Sprint 19 Direct Negotiated Prices
+
+When the admin path produces one combination, negotiated prices can be entered directly from the admin UI.
+
+The direct workflow shows:
+
+- each configured tier;
+- the PJM reference price when it can be calculated;
+- an editable negotiated price;
+- the generated MISID after save.
+
+The first implementation stores the MISID as the negotiated profile name and stores one tier row per negotiated price.
+
+The Excel workflow remains useful for bulk editing. The direct workflow is the preferred path for a single locked PJM configuration.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.

@@ -4,7 +4,8 @@ const state = {
   selectedEngineId: null,
   negotiatedEngine: null,
   negotiatedOptions: [],
-  negotiatedCompatibility: null
+  negotiatedCompatibility: null,
+  directPricePreview: null
 };
 
 const els = {
@@ -52,7 +53,12 @@ const els = {
   npColumnCount: document.getElementById("npColumnCount"),
   npCompatibleCount: document.getElementById("npCompatibleCount"),
   npIncompatibleCount: document.getElementById("npIncompatibleCount"),
-  npPreviewColumns: document.getElementById("npPreviewColumns")
+  npPreviewColumns: document.getElementById("npPreviewColumns"),
+  npDirectStatus: document.getElementById("npDirectStatus"),
+  npDirectPriceList: document.getElementById("npDirectPriceList"),
+  npDirectPreviewButton: document.getElementById("npDirectPreviewButton"),
+  npDirectSaveButton: document.getElementById("npDirectSaveButton"),
+  npMisIdResult: document.getElementById("npMisIdResult")
 };
 
 async function getJson(url, init = {}) {
@@ -128,6 +134,8 @@ function setBusyButtons(isBusy) {
   els.npPreviewButton.disabled = isBusy;
   els.npValidateButton.disabled = isBusy;
   els.npExportButton.disabled = isBusy;
+  els.npDirectPreviewButton.disabled = isBusy;
+  els.npDirectSaveButton.disabled = isBusy;
 }
 
 function setView(viewName) {
@@ -811,8 +819,13 @@ function buildPayloadSignature(payload) {
 
 function clearNegotiatedCompatibility() {
   state.negotiatedCompatibility = null;
+  state.directPricePreview = null;
   els.npCompatibleCount.textContent = "-";
   els.npIncompatibleCount.textContent = "-";
+  els.npDirectStatus.textContent = "Non calcule";
+  els.npMisIdResult.textContent = "";
+  els.npDirectPriceList.innerHTML =
+    '<div class="empty-state">Calculez les paliers PJM pour saisir les prix negocies.</div>';
 }
 
 function renderPreview(plan) {
@@ -886,6 +899,115 @@ function buildExportPayload(payload, validation) {
       compatibleCombinationKeys: validation.compatibleCombinationKeys
     }
   };
+}
+
+function formatMoney(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "-";
+  return amount.toLocaleString("fr-FR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function renderDirectPricePreview(result) {
+  state.directPricePreview = result;
+  els.npDirectStatus.textContent = `${Number(result.tiers?.length || 0).toLocaleString("fr-FR")} paliers`;
+  els.npDirectPriceList.innerHTML = "";
+  els.npMisIdResult.textContent = "";
+
+  if (!result.tiers?.length) {
+    els.npDirectPriceList.innerHTML = '<div class="empty-state">Aucun palier a afficher.</div>';
+    return;
+  }
+
+  for (const tier of result.tiers) {
+    const row = document.createElement("div");
+    row.className = "direct-price-row";
+    row.innerHTML = `
+      <strong>${html(String(tier.quantity))}</strong>
+      <span title="${html(tier.warning || "")}">PJM ${html(formatMoney(tier.pjmPrice))}</span>
+      <input type="number"
+        min="0"
+        step="0.01"
+        data-direct-negotiated-price
+        data-direct-quantity="${html(String(tier.quantity))}"
+        data-direct-pjm-price="${html(tier.pjmPrice === null || tier.pjmPrice === undefined ? "" : String(tier.pjmPrice))}"
+        placeholder="Prix negocie">
+    `;
+    els.npDirectPriceList.appendChild(row);
+  }
+}
+
+function readDirectPrices() {
+  return Array.from(
+    els.npDirectPriceList.querySelectorAll("[data-direct-negotiated-price]")
+  ).map((input) => ({
+    quantity: Number(input.dataset.directQuantity),
+    pjmPrice: input.dataset.directPjmPrice
+      ? Number(input.dataset.directPjmPrice)
+      : null,
+    negotiatedPrice: input.value === "" ? null : Number(input.value)
+  }));
+}
+
+async function previewDirectPrices() {
+  els.negotiatedStatus.textContent = "Calcul PJM";
+  setBusyButtons(true);
+
+  try {
+    const response = await getJson("/negotiated-prices/direct-preview", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(buildPreviewPayload())
+    });
+    renderDirectPricePreview(response.data);
+    els.negotiatedStatus.textContent = response.data?.warnings?.length ? "A verifier" : "Pret";
+  } catch (error) {
+    els.negotiatedStatus.textContent = "Erreur";
+    els.npDirectPriceList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+async function saveDirectPrices() {
+  els.negotiatedStatus.textContent = "Enregistrement";
+  setBusyButtons(true);
+
+  try {
+    if (!state.directPricePreview) {
+      const response = await getJson("/negotiated-prices/direct-preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(buildPreviewPayload())
+      });
+      renderDirectPricePreview(response.data);
+    }
+
+    const response = await getJson("/negotiated-prices/direct-save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        ...buildPreviewPayload(),
+        directPrices: readDirectPrices()
+      })
+    });
+    els.npMisIdResult.textContent = `MISID: ${response.data?.misId}`;
+    els.negotiatedStatus.textContent = "Enregistre";
+  } catch (error) {
+    els.negotiatedStatus.textContent = "Erreur";
+    els.npDirectPriceList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  } finally {
+    setBusyButtons(false);
+  }
 }
 
 async function previewNegotiatedPrices() {
@@ -1063,6 +1185,8 @@ els.npInsertFormulaToken.addEventListener("click", insertFormulaToken);
 els.npPreviewButton.addEventListener("click", previewNegotiatedPrices);
 els.npValidateButton.addEventListener("click", validateNegotiatedCompatibility);
 els.npExportButton.addEventListener("click", exportNegotiatedPrices);
+els.npDirectPreviewButton.addEventListener("click", previewDirectPrices);
+els.npDirectSaveButton.addEventListener("click", saveDirectPrices);
 els.viewLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();

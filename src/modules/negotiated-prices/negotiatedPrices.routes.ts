@@ -2,6 +2,8 @@ import { Router } from "express";
 import {
   getNegotiatedPricesStatus,
   postNegotiatedPricesCompatibleOptions,
+  postNegotiatedPricesDirectPreview,
+  postNegotiatedPricesDirectSave,
   postNegotiatedPricesExport,
   postNegotiatedPricesPreview,
   postNegotiatedPricesValidateCombinations
@@ -19,4 +21,12 @@ negotiatedPricesRouter.post(
 negotiatedPricesRouter.post(
   "/validate-combinations",
   postNegotiatedPricesValidateCombinations
+);
+negotiatedPricesRouter.post(
+  "/direct-preview",
+  postNegotiatedPricesDirectPreview
+);
+negotiatedPricesRouter.post(
+  "/direct-save",
+  postNegotiatedPricesDirectSave
 );

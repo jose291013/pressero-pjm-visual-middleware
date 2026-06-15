@@ -735,6 +735,59 @@ tbody tr.is-selected {
   gap: 7px;
 }
 
+.direct-price-panel {
+  border-top: 1px solid var(--line);
+}
+
+.direct-price-list {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
+.direct-price-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.direct-price-row strong {
+  font-size: 13px;
+}
+
+.direct-price-row span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.direct-price-row input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 9px;
+}
+
+.direct-price-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.misid-result {
+  padding: 0 14px 14px;
+  color: #17663b;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
 .column-chip {
   max-width: 100%;
   padding: 5px 8px;
