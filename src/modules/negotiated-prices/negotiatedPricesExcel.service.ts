@@ -28,7 +28,15 @@ function normalizePricingBasis(
   return {
     mode: input.pricingBasis?.mode === "areaM2" ? "areaM2" : "quantity",
     formula: input.pricingBasis?.formula?.trim() ?? "",
-    parameters: input.pricingBasis?.parameters ?? []
+    parameters: (input.pricingBasis?.parameters ?? []).map((parameter) => ({
+      key: parameter.key,
+      label: parameter.label,
+      pjmKey: parameter.pjmKey,
+      role: parameter.role === "clientVariable" ? "clientVariable" : "adminFixed",
+      fixedValue: parameter.role === "clientVariable"
+        ? ""
+        : parameter.fixedValue?.trim() ?? ""
+    }))
   };
 }
 

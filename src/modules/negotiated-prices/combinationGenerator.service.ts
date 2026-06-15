@@ -43,6 +43,19 @@ function hashJson(value: unknown): string {
     .digest("hex");
 }
 
+function readPricingBasisSignature(input: NegotiatedPriceCombinationInput) {
+  return {
+    mode: input.pricingBasis?.mode ?? "quantity",
+    formula: input.pricingBasis?.formula ?? "",
+    parameters: (input.pricingBasis?.parameters ?? []).map((parameter) => ({
+      key: parameter.key,
+      pjmKey: parameter.pjmKey,
+      role: parameter.role ?? "adminFixed",
+      fixedValue: parameter.fixedValue ?? ""
+    }))
+  };
+}
+
 export function buildBaseCombinationKey(
   input: NegotiatedPriceCombinationInput,
   choices: NegotiatedPriceCombinationChoice[]
@@ -51,10 +64,7 @@ export function buildBaseCombinationKey(
     clientId: input.clientId,
     priceEngineId: input.priceEngineId,
     enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
-    pricingBasis: {
-      mode: input.pricingBasis?.mode ?? "quantity",
-      formula: input.pricingBasis?.formula ?? ""
-    },
+    pricingBasis: readPricingBasisSignature(input),
     optionChoices: choices.map((choice) => ({
       optionId: choice.optionId,
       choiceId: choice.choiceId
@@ -71,10 +81,7 @@ export function buildTierCombinationHash(
     clientId: input.clientId,
     priceEngineId: input.priceEngineId,
     enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
-    pricingBasis: {
-      mode: input.pricingBasis?.mode ?? "quantity",
-      formula: input.pricingBasis?.formula ?? ""
-    },
+    pricingBasis: readPricingBasisSignature(input),
     quantity,
     pages: null,
     optionChoiceIds: choices.map((choice) => choice.choiceId)

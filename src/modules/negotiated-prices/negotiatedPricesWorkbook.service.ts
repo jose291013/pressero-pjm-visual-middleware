@@ -213,6 +213,22 @@ function styleWorksheet(
   });
 }
 
+function formatClientVariableParameters(plan: NegotiatedPriceExcelPlan) {
+  const labels = plan.pricingBasis.parameters
+    .filter((parameter) => parameter.role === "clientVariable")
+    .map((parameter) => parameter.label);
+
+  return labels.length ? labels.join(", ") : "(aucun)";
+}
+
+function formatAdminFixedParameters(plan: NegotiatedPriceExcelPlan) {
+  const values = plan.pricingBasis.parameters
+    .filter((parameter) => parameter.role !== "clientVariable")
+    .map((parameter) => `${parameter.label}=${parameter.fixedValue ?? ""}`);
+
+  return values.length ? values.join(", ") : "(aucun)";
+}
+
 function addHelpSheet(workbook: ExcelJS.Workbook, plan: NegotiatedPriceExcelPlan) {
   const worksheet = workbook.addWorksheet("Aide");
   worksheet.columns = [
@@ -226,6 +242,8 @@ function addHelpSheet(workbook: ExcelJS.Workbook, plan: NegotiatedPriceExcelPlan
     ["Organisation ID", plan.clientId],
     ["Mode palier", plan.pricingBasis.mode === "areaM2" ? "m2" : "quantite"],
     ["Formule palier", plan.pricingBasis.formula || "(vide)"],
+    ["Variables client", formatClientVariableParameters(plan)],
+    ["Parametres fixes", formatAdminFixedParameters(plan)],
     ["Combinaisons brutes", plan.rawCombinationCount],
     ["Combinaisons exportees", plan.combinationCount],
     [

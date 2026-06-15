@@ -59,11 +59,16 @@ export type NegotiatedPriceOptionSelection = {
 };
 
 export type NegotiatedPricePricingBasisMode = "quantity" | "areaM2";
+export type NegotiatedPriceCalculationParameterRole =
+  | "clientVariable"
+  | "adminFixed";
 
 export type NegotiatedPriceCalculationParameter = {
   key: string;
   label: string;
   pjmKey: string;
+  role?: NegotiatedPriceCalculationParameterRole;
+  fixedValue?: string;
 };
 
 export type NegotiatedPricePricingBasis = {

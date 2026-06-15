@@ -44,6 +44,8 @@ const els = {
   npValidateButton: document.getElementById("npValidateButton"),
   npExportButton: document.getElementById("npExportButton"),
   npOptionPicker: document.getElementById("npOptionPicker"),
+  npParameterList: document.getElementById("npParameterList"),
+  npParameterCount: document.getElementById("npParameterCount"),
   npSelectedCount: document.getElementById("npSelectedCount"),
   npCombinationCount: document.getElementById("npCombinationCount"),
   npTierCount: document.getElementById("npTierCount"),
@@ -441,9 +443,102 @@ function collectCalculationParameters(engine = state.negotiatedEngine) {
     }));
 }
 
+function normalizeFormulaToken(value) {
+  return text(value, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function readFormulaTokens() {
+  const tokens = new Set();
+  const matches = els.npTierFormula.value.matchAll(/\{([^{}]+)\}/g);
+
+  for (const match of matches) {
+    tokens.add(normalizeFormulaToken(match[1]));
+  }
+
+  return tokens;
+}
+
+function readFixedParameterValues() {
+  const values = new Map();
+  els.npParameterList.querySelectorAll("[data-parameter-fixed-value]").forEach((input) => {
+    values.set(input.dataset.parameterKey, input.value);
+  });
+  return values;
+}
+
+function decorateCalculationParameters(parameters) {
+  const formulaTokens = readFormulaTokens();
+  const fixedValues = readFixedParameterValues();
+
+  return parameters.map((parameter) => {
+    const role = formulaTokens.has(normalizeFormulaToken(parameter.label))
+      ? "clientVariable"
+      : "adminFixed";
+
+    return {
+      ...parameter,
+      role,
+      fixedValue: role === "adminFixed"
+        ? fixedValues.get(parameter.key) ?? ""
+        : ""
+    };
+  });
+}
+
+function renderParameterList(parameters) {
+  const decoratedParameters = decorateCalculationParameters(parameters);
+  els.npParameterCount.textContent = decoratedParameters.length.toLocaleString("fr-FR");
+  els.npParameterList.innerHTML = "";
+
+  if (!decoratedParameters.length) {
+    els.npParameterList.innerHTML = '<div class="empty-state">Aucun parametre libre.</div>';
+    return;
+  }
+
+  for (const parameter of decoratedParameters) {
+    const item = document.createElement("article");
+    item.className = "parameter-item";
+
+    if (parameter.role === "clientVariable") {
+      item.innerHTML = `
+        <div class="parameter-item-head">
+          <strong class="option-picker-title">${html(parameter.label)}</strong>
+          <span class="parameter-badge">Variable client</span>
+        </div>
+        <small>${html(parameter.pjmKey)}</small>
+      `;
+    } else {
+      item.innerHTML = `
+        <div class="parameter-item-head">
+          <strong class="option-picker-title">${html(parameter.label)}</strong>
+          <span class="parameter-badge is-fixed">Valeur fixe</span>
+        </div>
+        <input type="text"
+          data-parameter-fixed-value
+          data-parameter-key="${html(parameter.key)}"
+          value="${html(parameter.fixedValue)}"
+          placeholder="Valeur PJM">
+        <small>${html(parameter.pjmKey)}</small>
+      `;
+    }
+
+    els.npParameterList.appendChild(item);
+  }
+
+  els.npParameterList.querySelectorAll("[data-parameter-fixed-value]").forEach((input) => {
+    input.addEventListener("input", clearNegotiatedCompatibility);
+  });
+}
+
 function renderCalculationParameters(engine = state.negotiatedEngine) {
   const selectedValue = els.npFormulaTokenSelect.value;
   const parameters = collectCalculationParameters(engine);
+  renderParameterList(parameters);
 
   els.npFormulaTokenSelect.innerHTML = '<option value="">Aucun parametre</option>';
 
@@ -474,11 +569,12 @@ function insertFormulaToken() {
   input.selectionStart = start + token.length;
   input.selectionEnd = start + token.length;
   clearNegotiatedCompatibility();
+  renderCalculationParameters();
 }
 
 function collectSelectedChoiceKeys() {
   const keys = new Set();
-  const selected = els.npOptionPicker.querySelectorAll("input[type='checkbox']:checked");
+  const selected = els.npOptionPicker.querySelectorAll("[data-negotiated-choice]:checked");
 
   selected.forEach((checkbox) => {
     keys.add(choiceSelectionKey(checkbox.dataset.optionPjmKey, checkbox.dataset.choiceValue));
@@ -539,8 +635,10 @@ function renderNegotiatedOptions(engine, selectedChoiceKeys = new Set()) {
       <div class="choice-checks">
         ${choices.map((choice) => `
           <label class="choice-check">
-            <input type="checkbox"
+            <input type="radio"
+              name="np-option-${html(option.optionId)}"
               ${selectedChoiceKeys.has(choiceSelectionKey(option.pjmKey, choice.pjmValue)) ? "checked" : ""}
+              data-negotiated-choice
               data-option-id="${html(option.optionId)}"
               data-option-name="${html(option.optionName)}"
               data-option-pjm-key="${html(option.pjmKey)}"
@@ -555,7 +653,7 @@ function renderNegotiatedOptions(engine, selectedChoiceKeys = new Set()) {
     els.npOptionPicker.appendChild(item);
   }
 
-  els.npOptionPicker.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+  els.npOptionPicker.querySelectorAll("[data-negotiated-choice]").forEach((checkbox) => {
     checkbox.addEventListener("change", refreshCompatibleNegotiatedOptions);
   });
   updateNegotiatedSelectedCount();
@@ -563,7 +661,7 @@ function renderNegotiatedOptions(engine, selectedChoiceKeys = new Set()) {
 
 function readNegotiatedSelections() {
   const selectedByOption = new Map();
-  const selected = els.npOptionPicker.querySelectorAll("input[type='checkbox']:checked");
+  const selected = els.npOptionPicker.querySelectorAll("[data-negotiated-choice]:checked");
 
   selected.forEach((checkbox) => {
     const optionId = checkbox.dataset.optionId;
@@ -586,7 +684,7 @@ function readNegotiatedSelections() {
 }
 
 function updateNegotiatedSelectedCount() {
-  const selectedCount = els.npOptionPicker.querySelectorAll("input[type='checkbox']:checked").length;
+  const selectedCount = els.npOptionPicker.querySelectorAll("[data-negotiated-choice]:checked").length;
   els.npSelectedCount.textContent = `${selectedCount.toLocaleString("fr-FR")} choix`;
 }
 
@@ -655,15 +753,24 @@ function findSelectedPriceGroupName() {
 function buildPricingBasisPayload() {
   const mode = els.npPricingMode.value === "areaM2" ? "areaM2" : "quantity";
   const formula = els.npTierFormula.value.trim();
+  const parameters = decorateCalculationParameters(collectCalculationParameters());
 
   if (mode === "areaM2" && !formula) {
     throw new Error("La formule de calcul m2 est obligatoire.");
   }
 
+  const missingFixedParameter = parameters.find((parameter) => {
+    return parameter.role === "adminFixed" && !parameter.fixedValue.trim();
+  });
+
+  if (missingFixedParameter) {
+    throw new Error(`Renseignez la valeur fixe: ${missingFixedParameter.label}.`);
+  }
+
   return {
     mode,
     formula,
-    parameters: collectCalculationParameters()
+    parameters
   };
 }
 
@@ -950,6 +1057,8 @@ els.npPriceGroupSelect.addEventListener("change", () => {
   field.addEventListener("input", clearNegotiatedCompatibility);
   field.addEventListener("change", clearNegotiatedCompatibility);
 });
+els.npTierFormula.addEventListener("input", () => renderCalculationParameters());
+els.npTierFormula.addEventListener("change", () => renderCalculationParameters());
 els.npInsertFormulaToken.addEventListener("click", insertFormulaToken);
 els.npPreviewButton.addEventListener("click", previewNegotiatedPrices);
 els.npValidateButton.addEventListener("click", validateNegotiatedCompatibility);

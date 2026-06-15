@@ -617,10 +617,66 @@ tbody tr.is-selected {
   gap: 10px;
 }
 
+.parameter-picker {
+  border-top: 1px solid var(--line);
+}
+
+.parameter-picker .panel-heading {
+  border-bottom: 1px solid var(--line);
+}
+
+.parameter-list {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
 .option-picker-item {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
+}
+
+.parameter-item {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.parameter-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.parameter-item input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 8px 10px;
+}
+
+.parameter-badge {
+  flex: 0 0 auto;
+  border: 1px solid #8fb7f0;
+  border-radius: 8px;
+  background: #f4f8ff;
+  color: #1f4f8f;
+  font-size: 12px;
+  padding: 4px 7px;
+}
+
+.parameter-badge.is-fixed {
+  border-color: #94d3b0;
+  background: #f2fbf6;
+  color: #17663b;
 }
 
 .option-picker-title {

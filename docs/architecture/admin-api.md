@@ -215,3 +215,16 @@ POST /negotiated-prices/export
 The export payload includes a `compatibilityFilter` with raw counts and compatible combination keys. The backend rejects stale filters that no longer match the current payload.
 
 The workbook `Aide` sheet records raw combinations, exported combinations and excluded combinations.
+
+## Sprint 18 Fixed Calculation Parameters
+
+The negotiated-prices admin screen now shows free PJM calculation parameters in the central `Options PJM` panel.
+
+The formula decides how each free parameter is handled:
+
+- a parameter present in the formula, such as `{Quantite d'exemplaires}`, becomes a `clientVariable`;
+- a parameter absent from the formula, such as `Nombre de pages`, becomes an `adminFixed` value.
+
+The admin must enter fixed values before preview/export. These values are included in `pricingBasis.parameters` and later become fixed PJM engine values for price calculation and job creation.
+
+The option picker now presents one choice per PJM option in the admin path, while PJM still supplies the next compatible option list.

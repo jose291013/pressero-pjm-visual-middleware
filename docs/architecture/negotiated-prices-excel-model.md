@@ -128,6 +128,26 @@ The `Aide` sheet records:
 
 The backend checks that the filter still matches the current generated combination set before exporting. If the admin changes selected choices, pricing basis or quantity tiers after verification, the UI must run validation again before export.
 
+## Sprint 18 Fixed Calculation Parameters
+
+Free PJM calculation parameters are now part of the pricing basis.
+
+The admin formula separates them into two roles:
+
+- `clientVariable`: the parameter label appears in the formula and will later be requested from Pressero;
+- `adminFixed`: the parameter does not appear in the formula and must be filled by the admin.
+
+Example:
+
+```text
+Formula: {Quantite d'exemplaires}
+Fixed: Nombre de pages = 16
+```
+
+The workbook help sheet summarizes both `Variables client` and `Parametres fixes`. Hidden pricing-basis metadata stores the parameter PJM keys, roles and fixed values.
+
+The stable combination hash includes these parameter roles and fixed values, so negotiated prices cannot collide across different locked values such as page counts.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.
