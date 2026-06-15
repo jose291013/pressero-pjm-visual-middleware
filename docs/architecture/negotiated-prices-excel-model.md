@@ -163,6 +163,12 @@ The first implementation stores the MISID as the negotiated profile name and sto
 
 The Excel workflow remains useful for bulk editing. The direct workflow is the preferred path for a single locked PJM configuration.
 
+## Sprint 20 Direct Save Feedback
+
+Direct save now gives the administrator an explicit visual confirmation.
+
+The returned MISID is shown in a persistent success block in the `Prix directs` panel. Missing MISID responses are treated as errors, because Pressero will need that reference to request the negotiated form and later retrieve the right price.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.

@@ -782,10 +782,25 @@ tbody tr.is-selected {
 }
 
 .misid-result {
-  padding: 0 14px 14px;
+  display: none;
+  margin: 0 14px 14px;
+  padding: 10px 12px;
+  border: 1px solid #94d3b0;
+  border-radius: 8px;
+  background: #f2fbf6;
   color: #17663b;
   font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+.misid-result.is-visible {
+  display: block;
+}
+
+.misid-result.is-error {
+  border-color: #f0a3a3;
+  background: #fff5f5;
+  color: #b42318;
 }
 
 .column-chip {

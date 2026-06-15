@@ -817,13 +817,25 @@ function buildPayloadSignature(payload) {
   return JSON.stringify(payload);
 }
 
+function showDirectSaveMessage(message, kind = "success") {
+  els.npMisIdResult.textContent = message;
+  els.npMisIdResult.classList.add("is-visible");
+  els.npMisIdResult.classList.toggle("is-error", kind === "error");
+  els.npMisIdResult.scrollIntoView({ block: "nearest" });
+}
+
+function clearDirectSaveMessage() {
+  els.npMisIdResult.textContent = "";
+  els.npMisIdResult.classList.remove("is-visible", "is-error");
+}
+
 function clearNegotiatedCompatibility() {
   state.negotiatedCompatibility = null;
   state.directPricePreview = null;
   els.npCompatibleCount.textContent = "-";
   els.npIncompatibleCount.textContent = "-";
   els.npDirectStatus.textContent = "Non calcule";
-  els.npMisIdResult.textContent = "";
+  clearDirectSaveMessage();
   els.npDirectPriceList.innerHTML =
     '<div class="empty-state">Calculez les paliers PJM pour saisir les prix negocies.</div>';
 }
@@ -915,7 +927,7 @@ function renderDirectPricePreview(result) {
   state.directPricePreview = result;
   els.npDirectStatus.textContent = `${Number(result.tiers?.length || 0).toLocaleString("fr-FR")} paliers`;
   els.npDirectPriceList.innerHTML = "";
-  els.npMisIdResult.textContent = "";
+  clearDirectSaveMessage();
 
   if (!result.tiers?.length) {
     els.npDirectPriceList.innerHTML = '<div class="empty-state">Aucun palier a afficher.</div>';
@@ -1000,11 +1012,17 @@ async function saveDirectPrices() {
         directPrices: readDirectPrices()
       })
     });
-    els.npMisIdResult.textContent = `MISID: ${response.data?.misId}`;
+    const misId = response.data?.misId;
+    if (!misId) {
+      throw new Error("Enregistrement effectue sans MISID retourne.");
+    }
+
+    showDirectSaveMessage(`MISID: ${misId}`);
+    els.npDirectStatus.textContent = "Enregistre";
     els.negotiatedStatus.textContent = "Enregistre";
   } catch (error) {
     els.negotiatedStatus.textContent = "Erreur";
-    els.npDirectPriceList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+    showDirectSaveMessage(error.message, "error");
   } finally {
     setBusyButtons(false);
   }

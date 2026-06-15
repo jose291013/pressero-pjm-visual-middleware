@@ -243,3 +243,9 @@ POST /negotiated-prices/direct-save
 `direct-preview` calls PJM `optionsandprice` for each tier when the pricing basis has exactly one client variable. `direct-save` persists one negotiated profile and one tier row per negotiated price, then returns a generated `MISID`.
 
 The `MISID` is the future reference that Pressero will send to the middleware to retrieve the correct negotiated form and price behavior.
+
+## Sprint 20 Direct Save Feedback
+
+The admin UI now treats the `MISID` returned by `POST /negotiated-prices/direct-save` as mandatory.
+
+After a successful save, the reference is displayed in a visible success block inside the `Prix directs` panel. If the response does not contain a `MISID`, the UI raises an explicit error. Save errors are shown without clearing the negotiated prices already entered by the administrator.
