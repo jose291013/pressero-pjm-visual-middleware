@@ -36,6 +36,7 @@ const els = {
   npPriceGroupSelect: document.getElementById("npPriceGroupSelect"),
   npQuantityTiers: document.getElementById("npQuantityTiers"),
   npPreviewButton: document.getElementById("npPreviewButton"),
+  npExportButton: document.getElementById("npExportButton"),
   npOptionPicker: document.getElementById("npOptionPicker"),
   npSelectedCount: document.getElementById("npSelectedCount"),
   npCombinationCount: document.getElementById("npCombinationCount"),
@@ -644,6 +645,46 @@ async function previewNegotiatedPrices() {
   }
 }
 
+function readDownloadFileName(response) {
+  const disposition = response.headers.get("content-disposition") || "";
+  const match = disposition.match(/filename="([^"]+)"/);
+  return match?.[1] || "prix-negocies.xlsx";
+}
+
+async function exportNegotiatedPrices() {
+  els.negotiatedStatus.textContent = "Export";
+
+  try {
+    const response = await fetch("/negotiated-prices/export", {
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(buildPreviewPayload())
+    });
+
+    if (!response.ok) {
+      const message = await readErrorMessage(response);
+      throw new Error(message || `HTTP ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = readDownloadFileName(response);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    els.negotiatedStatus.textContent = "Pret";
+  } catch (error) {
+    els.negotiatedStatus.textContent = "Erreur";
+    els.npPreviewColumns.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  }
+}
+
 async function loadDashboard() {
   setBusyButtons(true);
   els.detailStatus.textContent = "Chargement";
@@ -716,6 +757,7 @@ els.npPriceGroupSelect.addEventListener("change", () => {
   refreshCompatibleNegotiatedOptions();
 });
 els.npPreviewButton.addEventListener("click", previewNegotiatedPrices);
+els.npExportButton.addEventListener("click", exportNegotiatedPrices);
 els.viewLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();

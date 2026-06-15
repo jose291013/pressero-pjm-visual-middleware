@@ -52,6 +52,23 @@ For preview, the selected visible choices still produce a Cartesian product. Whe
 
 Before filling real PJM prices in Excel, a later sprint should expand this into branch-by-branch compatibility checks so every generated row is validated against PJM.
 
+## Sprint 14 XLSX Export
+
+The middleware now generates a real Excel workbook through:
+
+```http
+POST /negotiated-prices/export
+```
+
+The workbook contains:
+
+- `Prix negocies`: the editable export sheet;
+- `Aide`: context and usage notes;
+- hidden technical columns such as combination keys, PJM IDs and tier hashes;
+- visible columns for context, option choices, `Prix PJM <quantity>` and `Prix negocie <quantity>`.
+
+The price columns are intentionally empty in this sprint. `Prix PJM <quantity>` will be filled by a later `optionsandprice` sprint, while `Prix negocie <quantity>` will remain editable before import.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.

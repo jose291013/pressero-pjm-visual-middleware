@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import {
+  exportNegotiatedPriceWorkbook,
   listCompatiblePjmOptions,
   previewNegotiatedPriceExcelPlan
 } from "./negotiatedPrices.service.js";
@@ -38,6 +39,27 @@ export function postNegotiatedPricesPreview(req: Request, res: Response) {
   try {
     const plan = previewNegotiatedPriceExcelPlan(readPreviewInput(req.body));
     res.status(200).json({ data: plan });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(400).json({ error: message });
+  }
+}
+
+export async function postNegotiatedPricesExport(req: Request, res: Response) {
+  try {
+    const exportResult = await exportNegotiatedPriceWorkbook(
+      readPreviewInput(req.body)
+    );
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${exportResult.fileName}"`
+    );
+    res.status(200).send(exportResult.buffer);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     res.status(400).json({ error: message });

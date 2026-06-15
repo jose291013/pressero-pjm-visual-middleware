@@ -147,3 +147,15 @@ POST /negotiated-prices/compatible-options
 The request sends the selected `EnginePriceGroupIntegrationId` and the current option selections as PJM `Key`/`Value` pairs. The backend calls PJM with `Operation: "options"` and returns normalized options for the UI.
 
 The UI reveals selected options plus the next compatible option. If multiple choices are checked for one option, the first checked choice drives the compatibility path for discovering the next option.
+
+## Sprint 14 XLSX Export
+
+The negotiated-prices admin screen can now export the current preview payload as an Excel workbook:
+
+```http
+POST /negotiated-prices/export
+```
+
+The response is an `.xlsx` attachment. It contains the combination rows, visible option labels, price tier columns and hidden technical columns for the future import.
+
+This endpoint does not call PJM `optionsandprice` yet. The `Prix PJM <quantity>` columns are present but empty until the reference-price sprint is implemented.

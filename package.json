@@ -21,6 +21,7 @@
     "test:sprint11": "node scripts/test-sprint-11-negotiated-prices-admin-preview.mjs",
     "test:sprint12": "node scripts/test-sprint-12-option-label-normalization.mjs",
     "test:sprint13": "node scripts/test-sprint-13-compatible-option-flow.mjs",
+    "test:sprint14": "node scripts/test-sprint-14-negotiated-prices-xlsx-export.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",
@@ -34,6 +35,7 @@
   "dependencies": {
     "@prisma/client": "^6.0.0",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
     "express": "^5.0.0"
   },
   "devDependencies": {

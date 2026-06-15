@@ -1,4 +1,5 @@
 import { buildNegotiatedPriceExcelPlan } from "./negotiatedPricesExcel.service.js";
+import { buildNegotiatedPriceWorkbookExport } from "./negotiatedPricesWorkbook.service.js";
 import { createPjmClientFromEnv } from "../pjm-sync/pjmClient.js";
 import {
   extractPjmOptionKey,
@@ -8,7 +9,8 @@ import type {
   NegotiatedPriceCompatibleOptionsInput,
   NegotiatedPriceCompatibleOptionsResult,
   NegotiatedPriceCombinationInput,
-  NegotiatedPriceExcelPlan
+  NegotiatedPriceExcelPlan,
+  NegotiatedPriceWorkbookExport
 } from "./negotiatedPrices.types.js";
 
 export function getNegotiatedPricesModuleName() {
@@ -19,6 +21,12 @@ export function previewNegotiatedPriceExcelPlan(
   input: NegotiatedPriceCombinationInput
 ): NegotiatedPriceExcelPlan {
   return buildNegotiatedPriceExcelPlan(input);
+}
+
+export function exportNegotiatedPriceWorkbook(
+  input: NegotiatedPriceCombinationInput
+): Promise<NegotiatedPriceWorkbookExport> {
+  return buildNegotiatedPriceWorkbookExport(input);
 }
 
 function readCompatibilitySelections(

@@ -79,6 +79,11 @@ export type NegotiatedPriceExcelColumn = {
   quantity?: number;
 };
 
+export type NegotiatedPriceWorkbookExport = {
+  fileName: string;
+  buffer: Buffer;
+};
+
 export type NegotiatedPriceExcelPlan = {
   clientId: string;
   organizationName: string | null;

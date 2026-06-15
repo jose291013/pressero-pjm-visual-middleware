@@ -50,7 +50,6 @@ assert.match(html, /id="npOptionPicker"/);
 assert.match(html, /id="npPreviewButton"/);
 assert.match(html, /id="npCombinationCount"/);
 assert.match(html, /id="npPreviewColumns"/);
-assert.doesNotMatch(html, /download|xlsx|ExcelJS/);
 
 const css = await readText("src/public/admin/admin.css");
 assert.match(css, /\.admin-view/);
@@ -76,7 +75,7 @@ assert.match(js, /method:\s*"POST"/);
 assert.match(js, /\/pjm-sync\/admin\/price-engines\/\$\{encodeURIComponent\(engineId\)\}/);
 assert.match(js, /data-option-pjm-key/);
 assert.match(js, /Prix/);
-assert.doesNotMatch(js, /ExcelJS|xlsx|download/);
+assert.doesNotMatch(js, /ExcelJS/);
 
 const adminDoc = await readText("docs/architecture/admin-api.md");
 assert.match(adminDoc, /Sprint 11 Negotiated Prices Preview/);
