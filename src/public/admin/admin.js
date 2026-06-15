@@ -35,6 +35,10 @@ const els = {
   npEngineSelect: document.getElementById("npEngineSelect"),
   npPriceGroupSelect: document.getElementById("npPriceGroupSelect"),
   npQuantityTiers: document.getElementById("npQuantityTiers"),
+  npPricingMode: document.getElementById("npPricingMode"),
+  npTierFormula: document.getElementById("npTierFormula"),
+  npFormulaTokenSelect: document.getElementById("npFormulaTokenSelect"),
+  npInsertFormulaToken: document.getElementById("npInsertFormulaToken"),
   npPreviewButton: document.getElementById("npPreviewButton"),
   npExportButton: document.getElementById("npExportButton"),
   npOptionPicker: document.getElementById("npOptionPicker"),
@@ -405,6 +409,65 @@ function normalizeNegotiatedOption(option) {
   };
 }
 
+function getNegotiatedSourceOptions(engine = state.negotiatedEngine) {
+  return state.negotiatedOptions.length
+    ? state.negotiatedOptions
+    : engine?.options ?? [];
+}
+
+function collectCalculationParameters(engine = state.negotiatedEngine) {
+  const seen = new Set();
+
+  return getNegotiatedSourceOptions(engine)
+    .map(normalizeNegotiatedOption)
+    .filter((option) => option.optionId && option.pjmKey && option.choices.length === 0)
+    .filter((option) => {
+      const key = `${option.optionId}\u0000${option.pjmKey}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((option) => ({
+      key: option.optionId,
+      label: option.optionName,
+      pjmKey: option.pjmKey
+    }));
+}
+
+function renderCalculationParameters(engine = state.negotiatedEngine) {
+  const selectedValue = els.npFormulaTokenSelect.value;
+  const parameters = collectCalculationParameters(engine);
+
+  els.npFormulaTokenSelect.innerHTML = '<option value="">Aucun parametre</option>';
+
+  for (const parameter of parameters) {
+    const item = document.createElement("option");
+    item.value = parameter.key;
+    item.textContent = parameter.label;
+    item.dataset.label = parameter.label;
+    item.dataset.pjmKey = parameter.pjmKey;
+    els.npFormulaTokenSelect.appendChild(item);
+  }
+
+  if (selectedValue) {
+    els.npFormulaTokenSelect.value = selectedValue;
+  }
+}
+
+function insertFormulaToken() {
+  const selected = els.npFormulaTokenSelect.selectedOptions[0];
+  if (!selected?.value) return;
+
+  const token = `{${selected.dataset.label || selected.textContent}}`;
+  const input = els.npTierFormula;
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? input.value.length;
+  input.value = `${input.value.slice(0, start)}${token}${input.value.slice(end)}`;
+  input.focus();
+  input.selectionStart = start + token.length;
+  input.selectionEnd = start + token.length;
+}
+
 function collectSelectedChoiceKeys() {
   const keys = new Set();
   const selected = els.npOptionPicker.querySelectorAll("input[type='checkbox']:checked");
@@ -444,14 +507,13 @@ function buildCompatibilitySelections() {
 }
 
 function renderNegotiatedOptions(engine, selectedChoiceKeys = new Set()) {
-  const sourceOptions = state.negotiatedOptions.length
-    ? state.negotiatedOptions
-    : engine?.options ?? [];
+  const sourceOptions = getNegotiatedSourceOptions(engine);
   const options = sourceOptions
     .map(normalizeNegotiatedOption)
     .filter((option) => option.choices.length > 0);
   const visibleOptions = getVisibleNegotiatedOptions(options, selectedChoiceKeys);
   els.npOptionPicker.innerHTML = "";
+  renderCalculationParameters(engine);
 
   if (!options.length) {
     els.npOptionPicker.innerHTML = '<div class="empty-state">Aucune option disponible pour ce moteur.</div>';
@@ -558,6 +620,7 @@ async function loadNegotiatedEngine() {
   state.negotiatedOptions = [];
   renderNegotiatedPriceGroups(null);
   renderNegotiatedOptions(null);
+  renderCalculationParameters(null);
 
   if (!engineId) return;
 
@@ -578,6 +641,21 @@ async function loadNegotiatedEngine() {
 function findSelectedPriceGroupName() {
   const selected = els.npPriceGroupSelect.selectedOptions[0];
   return selected ? selected.textContent : "";
+}
+
+function buildPricingBasisPayload() {
+  const mode = els.npPricingMode.value === "areaM2" ? "areaM2" : "quantity";
+  const formula = els.npTierFormula.value.trim();
+
+  if (mode === "areaM2" && !formula) {
+    throw new Error("La formule de calcul m2 est obligatoire.");
+  }
+
+  return {
+    mode,
+    formula,
+    parameters: collectCalculationParameters()
+  };
 }
 
 function buildPreviewPayload() {
@@ -606,6 +684,7 @@ function buildPreviewPayload() {
     enginePriceGroupIntegrationId: els.npPriceGroupSelect.value,
     priceGroupName: findSelectedPriceGroupName(),
     quantityTiersText: els.npQuantityTiers.value,
+    pricingBasis: buildPricingBasisPayload(),
     optionSelections
   };
 }
@@ -756,6 +835,7 @@ els.npPriceGroupSelect.addEventListener("change", () => {
   renderPreview({ columns: [], quantities: [], combinationCount: 0 });
   refreshCompatibleNegotiatedOptions();
 });
+els.npInsertFormulaToken.addEventListener("click", insertFormulaToken);
 els.npPreviewButton.addEventListener("click", previewNegotiatedPrices);
 els.npExportButton.addEventListener("click", exportNegotiatedPrices);
 els.viewLinks.forEach((link) => {

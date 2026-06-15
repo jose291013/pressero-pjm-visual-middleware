@@ -159,3 +159,27 @@ POST /negotiated-prices/export
 The response is an `.xlsx` attachment. It contains the combination rows, visible option labels, price tier columns and hidden technical columns for the future import.
 
 This endpoint does not call PJM `optionsandprice` yet. The `Prix PJM <quantity>` columns are present but empty until the reference-price sprint is implemented.
+
+## Sprint 15 Pricing Basis Formula
+
+The negotiated-prices preview and export payloads can now include a `pricingBasis` block:
+
+```json
+{
+  "pricingBasis": {
+    "mode": "areaM2",
+    "formula": "({Largeur} / 100) * ({Hauteur} / 100) * {Quantite}",
+    "parameters": [
+      {
+        "key": "local-option-id",
+        "label": "Largeur",
+        "pjmKey": "pjm-option-key"
+      }
+    ]
+  }
+}
+```
+
+The admin UI builds the formula parameter dropdown from compatible PJM options that have no fixed choices. `quantity` mode remains compatible with a blank formula. `areaM2` mode requires a formula before preview/export.
+
+The generated preview and workbook include `Mode palier` and `Formule palier`. Formula evaluation and PJM `optionsandprice` calls are deferred to a later sprint.

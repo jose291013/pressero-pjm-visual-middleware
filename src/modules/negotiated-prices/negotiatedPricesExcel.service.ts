@@ -5,7 +5,8 @@ import {
 import type {
   NegotiatedPriceCombinationInput,
   NegotiatedPriceExcelColumn,
-  NegotiatedPriceExcelPlan
+  NegotiatedPriceExcelPlan,
+  NegotiatedPricePricingBasis
 } from "./negotiatedPrices.types.js";
 
 function buildContextColumns(): NegotiatedPriceExcelColumn[] {
@@ -14,8 +15,20 @@ function buildContextColumns(): NegotiatedPriceExcelColumn[] {
     { key: "clientId", label: "Organisation ID", kind: "context" },
     { key: "organizationName", label: "Organisation", kind: "context" },
     { key: "priceEngineName", label: "Moteur PJM", kind: "context" },
-    { key: "priceGroupName", label: "Groupe de prix", kind: "context" }
+    { key: "priceGroupName", label: "Groupe de prix", kind: "context" },
+    { key: "pricingBasisMode", label: "Mode palier", kind: "context" },
+    { key: "pricingBasisFormula", label: "Formule palier", kind: "context" }
   ];
+}
+
+function normalizePricingBasis(
+  input: NegotiatedPriceCombinationInput
+): NegotiatedPricePricingBasis {
+  return {
+    mode: input.pricingBasis?.mode === "areaM2" ? "areaM2" : "quantity",
+    formula: input.pricingBasis?.formula?.trim() ?? "",
+    parameters: input.pricingBasis?.parameters ?? []
+  };
 }
 
 function buildOptionColumns(
@@ -49,7 +62,12 @@ export function buildNegotiatedPriceExcelPlan(
   input: NegotiatedPriceCombinationInput
 ): NegotiatedPriceExcelPlan {
   const quantities = parseQuantityTiersText(input.quantityTiersText);
-  const rows = buildChoiceCombinations(input, quantities);
+  const pricingBasis = normalizePricingBasis(input);
+  const normalizedInput: NegotiatedPriceCombinationInput = {
+    ...input,
+    pricingBasis
+  };
+  const rows = buildChoiceCombinations(normalizedInput, quantities);
 
   return {
     clientId: input.clientId,
@@ -58,6 +76,7 @@ export function buildNegotiatedPriceExcelPlan(
     priceEngineName: input.priceEngineName,
     enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
     priceGroupName: input.priceGroupName,
+    pricingBasis,
     quantities,
     combinationCount: rows.length,
     columns: [

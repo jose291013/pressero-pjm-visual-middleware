@@ -51,6 +51,10 @@ export function buildBaseCombinationKey(
     clientId: input.clientId,
     priceEngineId: input.priceEngineId,
     enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
+    pricingBasis: {
+      mode: input.pricingBasis?.mode ?? "quantity",
+      formula: input.pricingBasis?.formula ?? ""
+    },
     optionChoices: choices.map((choice) => ({
       optionId: choice.optionId,
       choiceId: choice.choiceId
@@ -67,6 +71,10 @@ export function buildTierCombinationHash(
     clientId: input.clientId,
     priceEngineId: input.priceEngineId,
     enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
+    pricingBasis: {
+      mode: input.pricingBasis?.mode ?? "quantity",
+      formula: input.pricingBasis?.formula ?? ""
+    },
     quantity,
     pages: null,
     optionChoiceIds: choices.map((choice) => choice.choiceId)

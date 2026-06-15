@@ -42,6 +42,20 @@ export type NegotiatedPriceOptionSelection = {
   choices: NegotiatedPriceChoiceSelection[];
 };
 
+export type NegotiatedPricePricingBasisMode = "quantity" | "areaM2";
+
+export type NegotiatedPriceCalculationParameter = {
+  key: string;
+  label: string;
+  pjmKey: string;
+};
+
+export type NegotiatedPricePricingBasis = {
+  mode: NegotiatedPricePricingBasisMode;
+  formula: string;
+  parameters: NegotiatedPriceCalculationParameter[];
+};
+
 export type NegotiatedPriceCombinationInput = {
   clientId: string;
   organizationName?: string;
@@ -50,6 +64,7 @@ export type NegotiatedPriceCombinationInput = {
   enginePriceGroupIntegrationId: string;
   priceGroupName: string;
   quantityTiersText: string;
+  pricingBasis?: NegotiatedPricePricingBasis;
   optionSelections: NegotiatedPriceOptionSelection[];
 };
 
@@ -91,6 +106,7 @@ export type NegotiatedPriceExcelPlan = {
   priceEngineName: string;
   enginePriceGroupIntegrationId: string;
   priceGroupName: string;
+  pricingBasis: NegotiatedPricePricingBasis;
   quantities: number[];
   combinationCount: number;
   columns: NegotiatedPriceExcelColumn[];

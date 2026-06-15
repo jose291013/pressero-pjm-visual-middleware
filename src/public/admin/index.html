@@ -194,6 +194,29 @@
 500
 1000</textarea>
                 </label>
+                <label>
+                  <span>Mode de palier</span>
+                  <select id="npPricingMode">
+                    <option value="quantity">Quantite</option>
+                    <option value="areaM2">m2</option>
+                  </select>
+                </label>
+                <label class="formula-field">
+                  <span>Formule de calcul</span>
+                  <textarea id="npTierFormula" rows="4" placeholder="{Quantite d'exemplaires}"></textarea>
+                </label>
+                <div class="formula-tools">
+                  <select id="npFormulaTokenSelect">
+                    <option value="">Aucun parametre</option>
+                  </select>
+                  <button class="action-button" id="npInsertFormulaToken" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 5v14"></path>
+                      <path d="M5 12h14"></path>
+                    </svg>
+                    Ajouter
+                  </button>
+                </div>
               </div>
 
               <div class="panel-footer">

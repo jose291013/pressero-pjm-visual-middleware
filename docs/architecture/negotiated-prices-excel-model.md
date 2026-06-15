@@ -69,6 +69,37 @@ The workbook contains:
 
 The price columns are intentionally empty in this sprint. `Prix PJM <quantity>` will be filled by a later `optionsandprice` sprint, while `Prix negocie <quantity>` will remain editable before import.
 
+## Sprint 15 Pricing Basis Formula
+
+Negotiated price exports now carry the tier calculation basis.
+
+The preview/export payload can include:
+
+```json
+{
+  "pricingBasis": {
+    "mode": "quantity",
+    "formula": "",
+    "parameters": [
+      {
+        "key": "pjm-option-local-id",
+        "label": "Quantite d'exemplaires",
+        "pjmKey": "pjm-option-key"
+      }
+    ]
+  }
+}
+```
+
+`mode` can be:
+
+- `quantity`: the existing quantity-tier behavior;
+- `areaM2`: future m2-tier behavior, where the effective tier will be calculated from the formula.
+
+The workbook adds visible `Mode palier` and `Formule palier` columns, plus a hidden `Parametres formule` column. The hidden data keeps the PJM parameter keys available for future import and price calculation.
+
+The stable combination hashes now include the tier mode and formula. This prevents an area-based negotiated price from sharing a reference with a quantity-based negotiated price that happens to use the same option choices.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.

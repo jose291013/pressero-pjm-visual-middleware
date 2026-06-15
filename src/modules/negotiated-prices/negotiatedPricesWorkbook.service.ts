@@ -100,6 +100,25 @@ function buildWorkbookColumns(plan: NegotiatedPriceExcelPlan): WorkbookColumn[] 
       width: 24,
       kind: "context"
     },
+    {
+      key: "pricingBasisMode",
+      header: "Mode palier",
+      width: 14,
+      kind: "context"
+    },
+    {
+      key: "pricingBasisFormula",
+      header: "Formule palier",
+      width: 34,
+      kind: "context"
+    },
+    {
+      key: "pricingBasisParameters",
+      header: "Parametres formule",
+      width: 18,
+      hidden: true,
+      kind: "technical"
+    },
     ...optionColumns,
     ...tierHashColumns,
     ...priceColumns
@@ -119,7 +138,10 @@ function buildRowValues(
     priceEngineId: plan.priceEngineId,
     priceEngineName: plan.priceEngineName,
     enginePriceGroupIntegrationId: plan.enginePriceGroupIntegrationId,
-    priceGroupName: plan.priceGroupName
+    priceGroupName: plan.priceGroupName,
+    pricingBasisMode: plan.pricingBasis.mode === "areaM2" ? "m2" : "quantite",
+    pricingBasisFormula: plan.pricingBasis.formula,
+    pricingBasisParameters: JSON.stringify(plan.pricingBasis.parameters)
   };
 
   for (const choice of row.choices) {
@@ -202,11 +224,13 @@ function addHelpSheet(workbook: ExcelJS.Workbook, plan: NegotiatedPriceExcelPlan
     ["Moteur PJM", plan.priceEngineName],
     ["Groupe de prix", plan.priceGroupName],
     ["Organisation ID", plan.clientId],
+    ["Mode palier", plan.pricingBasis.mode === "areaM2" ? "m2" : "quantite"],
+    ["Formule palier", plan.pricingBasis.formula || "(vide)"],
     ["Nombre de lignes", plan.combinationCount],
     ["Paliers", plan.quantities.join(", ")],
     [
-      "Sprint 14",
-      "Les colonnes Prix PJM et Prix negocie sont vides. Le calcul PJM sera ajoute au sprint suivant."
+      "Sprint 15",
+      "Le mode de palier et la formule sont exportes. Les colonnes Prix PJM et Prix negocie restent vides."
     ],
     [
       "Colonnes techniques",

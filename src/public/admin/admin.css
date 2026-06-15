@@ -582,6 +582,28 @@ tbody tr.is-selected {
   line-height: 1.35;
 }
 
+.formula-field textarea {
+  min-height: 88px;
+}
+
+.formula-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.formula-tools select {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 8px 10px;
+}
+
 .panel-footer {
   display: flex;
   justify-content: flex-end;
