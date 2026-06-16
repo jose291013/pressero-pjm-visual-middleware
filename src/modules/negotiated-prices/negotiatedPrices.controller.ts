@@ -5,12 +5,14 @@ import {
   previewNegotiatedPriceExcelPlan,
   previewDirectNegotiatedPrices,
   saveDirectNegotiatedPrices,
+  saveMultiNegotiatedPrices,
   validateNegotiatedPriceCompatibility
 } from "./negotiatedPrices.service.js";
 import type {
   NegotiatedPriceCombinationInput,
   NegotiatedPriceCompatibleOptionsInput,
-  NegotiatedPriceDirectSaveInput
+  NegotiatedPriceDirectSaveInput,
+  NegotiatedPriceMultiSaveInput
 } from "./negotiatedPrices.types.js";
 
 export function getNegotiatedPricesStatus(_req: Request, res: Response) {
@@ -35,6 +37,14 @@ function readDirectSaveInput(value: unknown): NegotiatedPriceDirectSaveInput {
   }
 
   return value as NegotiatedPriceDirectSaveInput;
+}
+
+function readMultiSaveInput(value: unknown): NegotiatedPriceMultiSaveInput {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("Request body must be an object.");
+  }
+
+  return value as NegotiatedPriceMultiSaveInput;
 }
 
 function readCompatibleOptionsInput(
@@ -130,6 +140,21 @@ export async function postNegotiatedPricesDirectSave(
   try {
     const result = await saveDirectNegotiatedPrices(
       readDirectSaveInput(req.body)
+    );
+    res.status(200).json({ data: result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(400).json({ error: message });
+  }
+}
+
+export async function postNegotiatedPricesMultiSave(
+  req: Request,
+  res: Response
+) {
+  try {
+    const result = await saveMultiNegotiatedPrices(
+      readMultiSaveInput(req.body)
     );
     res.status(200).json({ data: result });
   } catch (error) {

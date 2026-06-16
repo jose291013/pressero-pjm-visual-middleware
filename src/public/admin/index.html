@@ -183,6 +183,20 @@
                     <option value="">Choisir un groupe</option>
                   </select>
                 </label>
+                <label>
+                  <span>Type MIS ID</span>
+                  <select id="npProfileMode">
+                    <option value="single">Combinaison unique</option>
+                    <option value="multi">Multi-combinaison</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Options cote client</span>
+                  <select id="npVisibilityMode">
+                    <option value="hidden">Masquees</option>
+                    <option value="selectable">Selectionnables</option>
+                  </select>
+                </label>
                 <label class="quantity-field">
                   <span>Paliers de quantite</span>
                   <textarea id="npQuantityTiers" rows="8">1
@@ -314,6 +328,32 @@
                       <path d="M7 3v5h8"></path>
                     </svg>
                     Enregistrer
+                  </button>
+                </div>
+              </section>
+              <section class="multi-combination-panel">
+                <div class="panel-heading">
+                  <h3>Combinaisons MIS ID</h3>
+                  <span class="panel-count" id="npMultiCount">0</span>
+                </div>
+                <div class="multi-combination-list" id="npMultiList">
+                  <div class="empty-state">Ajoutez plusieurs combinaisons pour creer un MIS ID global.</div>
+                </div>
+                <div class="direct-price-footer">
+                  <button class="action-button" id="npAddCombinationButton" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 5v14"></path>
+                      <path d="M5 12h14"></path>
+                    </svg>
+                    Ajouter combinaison
+                  </button>
+                  <button class="action-button" id="npMultiSaveButton" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path>
+                      <path d="M17 21v-8H7v8"></path>
+                      <path d="M7 3v5h8"></path>
+                    </svg>
+                    Creer multi-combinaison
                   </button>
                 </div>
               </section>

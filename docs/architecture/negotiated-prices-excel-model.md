@@ -191,6 +191,18 @@ For compatibility with the previous direct-save flow, legacy `NegotiatedPriceCom
 
 The composed key is indexed first, not enforced as a database unique constraint yet, to avoid a risky schema push on existing local data. The strict unique constraint belongs in a later migration/backfill sprint.
 
+## Sprint 22 Multi-Combination Admin
+
+Multi-combination profiles are now created from the admin UI.
+
+The stored combinations become the future web-to-print allowlist:
+
+```text
+MISID -> validated combinations -> negotiated tiers
+```
+
+This is intentionally a liste blanche model. PJM remains responsible for compatibility while the admin creates each combination. Later, if options are visible to the Pressero customer, the customer will only navigate through choices present in the saved validated combinations.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.

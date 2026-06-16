@@ -5,7 +5,8 @@ const state = {
   negotiatedEngine: null,
   negotiatedOptions: [],
   negotiatedCompatibility: null,
-  directPricePreview: null
+  directPricePreview: null,
+  multiCombinations: []
 };
 
 const els = {
@@ -36,6 +37,8 @@ const els = {
   npOrganizationName: document.getElementById("npOrganizationName"),
   npEngineSelect: document.getElementById("npEngineSelect"),
   npPriceGroupSelect: document.getElementById("npPriceGroupSelect"),
+  npProfileMode: document.getElementById("npProfileMode"),
+  npVisibilityMode: document.getElementById("npVisibilityMode"),
   npQuantityTiers: document.getElementById("npQuantityTiers"),
   npPricingMode: document.getElementById("npPricingMode"),
   npTierFormula: document.getElementById("npTierFormula"),
@@ -58,6 +61,10 @@ const els = {
   npDirectPriceList: document.getElementById("npDirectPriceList"),
   npDirectPreviewButton: document.getElementById("npDirectPreviewButton"),
   npDirectSaveButton: document.getElementById("npDirectSaveButton"),
+  npAddCombinationButton: document.getElementById("npAddCombinationButton"),
+  npMultiSaveButton: document.getElementById("npMultiSaveButton"),
+  npMultiCount: document.getElementById("npMultiCount"),
+  npMultiList: document.getElementById("npMultiList"),
   npMisIdResult: document.getElementById("npMisIdResult")
 };
 
@@ -136,6 +143,8 @@ function setBusyButtons(isBusy) {
   els.npExportButton.disabled = isBusy;
   els.npDirectPreviewButton.disabled = isBusy;
   els.npDirectSaveButton.disabled = isBusy;
+  els.npAddCombinationButton.disabled = isBusy;
+  els.npMultiSaveButton.disabled = isBusy;
 }
 
 function setView(viewName) {
@@ -733,6 +742,7 @@ async function loadNegotiatedEngine() {
   const engineId = els.npEngineSelect.value;
   state.negotiatedEngine = null;
   state.negotiatedOptions = [];
+  clearMultiCombinations();
   renderNegotiatedPriceGroups(null);
   renderNegotiatedOptions(null);
   renderCalculationParameters(null);
@@ -827,6 +837,87 @@ function showDirectSaveMessage(message, kind = "success") {
 function clearDirectSaveMessage() {
   els.npMisIdResult.textContent = "";
   els.npMisIdResult.classList.remove("is-visible", "is-error");
+}
+
+function readVisibilityMode() {
+  return els.npVisibilityMode.value === "selectable" ? "selectable" : "hidden";
+}
+
+function buildDirectSavePayload() {
+  return {
+    ...buildPreviewPayload(),
+    profileMode: "single",
+    visibilityMode: readVisibilityMode(),
+    directPrices: readDirectPrices()
+  };
+}
+
+function buildMultiSignature(payload) {
+  return buildPayloadSignature({
+    clientId: payload.clientId,
+    priceEngineId: payload.priceEngineId,
+    enginePriceGroupIntegrationId: payload.enginePriceGroupIntegrationId,
+    quantityTiersText: payload.quantityTiersText,
+    pricingBasis: payload.pricingBasis,
+    optionSelections: payload.optionSelections
+  });
+}
+
+function buildCombinationLabel(payload) {
+  const labels = payload.optionSelections.flatMap((option) => {
+    return option.choices.map((choice) => `${option.optionName}: ${choice.choiceName}`);
+  });
+  return labels.join(" | ") || payload.priceEngineName;
+}
+
+function assertDirectPricesReady(directPrices) {
+  if (!directPrices.length) {
+    throw new Error("Calculez les paliers PJM avant d'ajouter la combinaison.");
+  }
+
+  const missingPrice = directPrices.find((price) => {
+    return price.negotiatedPrice === null || price.negotiatedPrice === undefined;
+  });
+
+  if (missingPrice) {
+    throw new Error(`Prix negocie manquant pour le palier ${missingPrice.quantity}.`);
+  }
+}
+
+function renderMultiCombinations() {
+  els.npMultiCount.textContent = state.multiCombinations.length.toLocaleString("fr-FR");
+  els.npMultiList.innerHTML = "";
+
+  if (!state.multiCombinations.length) {
+    els.npMultiList.innerHTML =
+      '<div class="empty-state">Ajoutez plusieurs combinaisons pour creer un MIS ID global.</div>';
+    return;
+  }
+
+  state.multiCombinations.forEach((combination, index) => {
+    const item = document.createElement("article");
+    item.className = "multi-combination-item";
+    item.innerHTML = `
+      <div>
+        <strong>${html(combination.label)}</strong>
+        <span>${html(combination.payload.directPrices.length)} paliers negocies</span>
+      </div>
+      <button class="multi-remove-button" type="button" data-remove-multi-index="${index}" title="Retirer" aria-label="Retirer">x</button>
+    `;
+    els.npMultiList.appendChild(item);
+  });
+
+  els.npMultiList.querySelectorAll("[data-remove-multi-index]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.multiCombinations.splice(Number(button.dataset.removeMultiIndex), 1);
+      renderMultiCombinations();
+    });
+  });
+}
+
+function clearMultiCombinations() {
+  state.multiCombinations = [];
+  renderMultiCombinations();
 }
 
 function clearNegotiatedCompatibility() {
@@ -1007,10 +1098,7 @@ async function saveDirectPrices() {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        ...buildPreviewPayload(),
-        directPrices: readDirectPrices()
-      })
+      body: JSON.stringify(buildDirectSavePayload())
     });
     const misId = response.data?.misId;
     if (!misId) {
@@ -1018,6 +1106,86 @@ async function saveDirectPrices() {
     }
 
     showDirectSaveMessage(`MISID: ${misId}`);
+    els.npDirectStatus.textContent = "Enregistre";
+    els.negotiatedStatus.textContent = "Enregistre";
+  } catch (error) {
+    els.negotiatedStatus.textContent = "Erreur";
+    showDirectSaveMessage(error.message, "error");
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+function addCurrentCombinationToMulti() {
+  try {
+    if (!state.directPricePreview) {
+      throw new Error("Calculez les paliers PJM avant d'ajouter la combinaison.");
+    }
+
+    const payload = buildDirectSavePayload();
+    assertDirectPricesReady(payload.directPrices);
+    const signature = buildMultiSignature(payload);
+
+    if (state.multiCombinations.some((combination) => combination.signature === signature)) {
+      throw new Error("Cette combinaison est deja dans le MIS ID.");
+    }
+
+    state.multiCombinations.push({
+      signature,
+      label: buildCombinationLabel(payload),
+      payload: {
+        ...payload,
+        label: buildCombinationLabel(payload)
+      }
+    });
+    renderMultiCombinations();
+    els.npProfileMode.value = "multi";
+    els.negotiatedStatus.textContent = "Ajoute";
+    clearDirectSaveMessage();
+  } catch (error) {
+    els.negotiatedStatus.textContent = "Erreur";
+    showDirectSaveMessage(error.message, "error");
+  }
+}
+
+function buildMultiSavePayload() {
+  if (!state.multiCombinations.length) {
+    throw new Error("Ajoutez au moins une combinaison au MIS ID.");
+  }
+
+  const first = state.multiCombinations[0].payload;
+  return {
+    clientId: first.clientId,
+    organizationName: first.organizationName,
+    priceEngineId: first.priceEngineId,
+    priceEngineName: first.priceEngineName,
+    enginePriceGroupIntegrationId: first.enginePriceGroupIntegrationId,
+    priceGroupName: first.priceGroupName,
+    visibilityMode: readVisibilityMode(),
+    combinations: state.multiCombinations.map((combination) => combination.payload)
+  };
+}
+
+async function saveMultiCombinations() {
+  els.negotiatedStatus.textContent = "Enregistrement";
+  setBusyButtons(true);
+
+  try {
+    const response = await getJson("/negotiated-prices/multi-save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(buildMultiSavePayload())
+    });
+    const misId = response.data?.misId;
+    if (!misId) {
+      throw new Error("Enregistrement effectue sans MISID retourne.");
+    }
+
+    showDirectSaveMessage(
+      `MISID: ${misId} (${response.data?.combinationsSaved ?? state.multiCombinations.length} combinaisons)`
+    );
     els.npDirectStatus.textContent = "Enregistre";
     els.negotiatedStatus.textContent = "Enregistre";
   } catch (error) {
@@ -1183,6 +1351,7 @@ els.categoryFilter.addEventListener("change", applyFilters);
 els.priceGroupFilter.addEventListener("change", applyFilters);
 els.npEngineSelect.addEventListener("change", loadNegotiatedEngine);
 els.npPriceGroupSelect.addEventListener("change", () => {
+  clearMultiCombinations();
   state.negotiatedOptions = [];
   renderPreview({ columns: [], quantities: [], combinationCount: 0 });
   refreshCompatibleNegotiatedOptions();
@@ -1194,8 +1363,14 @@ els.npPriceGroupSelect.addEventListener("change", () => {
   els.npPricingMode,
   els.npTierFormula
 ].forEach((field) => {
-  field.addEventListener("input", clearNegotiatedCompatibility);
-  field.addEventListener("change", clearNegotiatedCompatibility);
+  field.addEventListener("input", () => {
+    clearNegotiatedCompatibility();
+    clearMultiCombinations();
+  });
+  field.addEventListener("change", () => {
+    clearNegotiatedCompatibility();
+    clearMultiCombinations();
+  });
 });
 els.npTierFormula.addEventListener("input", () => renderCalculationParameters());
 els.npTierFormula.addEventListener("change", () => renderCalculationParameters());
@@ -1205,6 +1380,8 @@ els.npValidateButton.addEventListener("click", validateNegotiatedCompatibility);
 els.npExportButton.addEventListener("click", exportNegotiatedPrices);
 els.npDirectPreviewButton.addEventListener("click", previewDirectPrices);
 els.npDirectSaveButton.addEventListener("click", saveDirectPrices);
+els.npAddCombinationButton.addEventListener("click", addCurrentCombinationToMulti);
+els.npMultiSaveButton.addEventListener("click", saveMultiCombinations);
 els.viewLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();
@@ -1212,4 +1389,5 @@ els.viewLinks.forEach((link) => {
   });
 });
 
+renderMultiCombinations();
 loadDashboard();

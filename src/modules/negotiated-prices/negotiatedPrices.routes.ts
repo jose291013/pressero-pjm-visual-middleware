@@ -5,6 +5,7 @@ import {
   postNegotiatedPricesDirectPreview,
   postNegotiatedPricesDirectSave,
   postNegotiatedPricesExport,
+  postNegotiatedPricesMultiSave,
   postNegotiatedPricesPreview,
   postNegotiatedPricesValidateCombinations
 } from "./negotiatedPrices.controller.js";
@@ -29,4 +30,8 @@ negotiatedPricesRouter.post(
 negotiatedPricesRouter.post(
   "/direct-save",
   postNegotiatedPricesDirectSave
+);
+negotiatedPricesRouter.post(
+  "/multi-save",
+  postNegotiatedPricesMultiSave
 );

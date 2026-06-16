@@ -148,6 +148,22 @@ export type NegotiatedPriceDirectSaveInput = NegotiatedPriceCombinationInput & {
   directPrices: NegotiatedPriceDirectPriceInput[];
 };
 
+export type NegotiatedPriceMultiCombinationInput = NegotiatedPriceCombinationInput & {
+  label?: string;
+  directPrices: NegotiatedPriceDirectPriceInput[];
+};
+
+export type NegotiatedPriceMultiSaveInput = {
+  clientId: string;
+  organizationName?: string;
+  priceEngineId: string;
+  priceEngineName: string;
+  enginePriceGroupIntegrationId: string;
+  priceGroupName: string;
+  visibilityMode?: NegotiatedPriceVisibilityMode;
+  combinations: NegotiatedPriceMultiCombinationInput[];
+};
+
 export type NegotiatedPriceDirectSaveResult = {
   misId: string;
   profileKey: {
@@ -158,6 +174,12 @@ export type NegotiatedPriceDirectSaveResult = {
   profileId: string;
   combinationId: string;
   rowsSaved: number;
+};
+
+export type NegotiatedPriceMultiSaveResult = NegotiatedPriceDirectSaveResult & {
+  profileMode: "multi";
+  combinationsSaved: number;
+  combinationIds: string[];
 };
 
 export type NegotiatedPriceExcelPlan = {

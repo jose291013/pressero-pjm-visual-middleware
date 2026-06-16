@@ -15,10 +15,14 @@ import type {
   NegotiatedPriceCompatibleOption,
   NegotiatedPriceCombinationChoice,
   NegotiatedPriceCombinationInput,
+  NegotiatedPriceDirectPriceInput,
   NegotiatedPriceDirectPreviewResult,
   NegotiatedPriceDirectSaveInput,
   NegotiatedPriceDirectSaveResult,
   NegotiatedPriceExcelPlan,
+  NegotiatedPriceMultiCombinationInput,
+  NegotiatedPriceMultiSaveInput,
+  NegotiatedPriceMultiSaveResult,
   NegotiatedPriceWorkbookExport
 } from "./negotiatedPrices.types.js";
 
@@ -61,7 +65,7 @@ function generateMisId(input: NegotiatedPriceCombinationInput) {
   return `MIS-${client}-${engine}-${suffix}`;
 }
 
-function readOrganizationIntegrationId(input: NegotiatedPriceCombinationInput) {
+function readOrganizationIntegrationId(input: { clientId: string }) {
   const organizationIntegrationId = input.clientId?.trim();
 
   if (!organizationIntegrationId) {
@@ -77,6 +81,10 @@ function readDirectProfileMode(input: NegotiatedPriceDirectSaveInput) {
 
 function readDirectVisibilityMode(input: NegotiatedPriceDirectSaveInput) {
   return input.visibilityMode === "selectable" ? "selectable" : "hidden";
+}
+
+function readVisibilityMode(value: unknown) {
+  return value === "selectable" ? "selectable" : "hidden";
 }
 
 function splitPricingBasisParameters(input: NegotiatedPriceCombinationInput) {
@@ -204,12 +212,12 @@ export async function previewDirectNegotiatedPrices(
   };
 }
 
-function assertValidDirectPrices(input: NegotiatedPriceDirectSaveInput) {
-  if (!input.directPrices.length) {
+function assertValidDirectPrices(directPrices: NegotiatedPriceDirectPriceInput[]) {
+  if (!directPrices.length) {
     throw new Error("Aucun prix negocie a enregistrer.");
   }
 
-  for (const price of input.directPrices) {
+  for (const price of directPrices) {
     if (!Number.isSafeInteger(Number(price.quantity)) || Number(price.quantity) <= 0) {
       throw new Error("Chaque prix direct doit avoir un palier valide.");
     }
@@ -224,23 +232,27 @@ function assertValidDirectPrices(input: NegotiatedPriceDirectSaveInput) {
   }
 }
 
-export async function saveDirectNegotiatedPrices(
-  input: NegotiatedPriceDirectSaveInput
-): Promise<NegotiatedPriceDirectSaveResult> {
-  assertValidDirectPrices(input);
-  const { plan, row } = readSingleCombinationRow(input);
+function assertDirectPricesMatchPlan(
+  directPrices: NegotiatedPriceDirectPriceInput[],
+  plan: NegotiatedPriceExcelPlan
+) {
   const quantities = new Set(plan.quantities);
 
-  for (const price of input.directPrices) {
+  for (const price of directPrices) {
     if (!quantities.has(Number(price.quantity))) {
       throw new Error(`Le palier ${price.quantity} ne fait pas partie de la preview.`);
     }
   }
+}
 
-  const misId = generateMisId(input);
-  const organizationIntegrationId = readOrganizationIntegrationId(input);
-  const parameterGroups = splitPricingBasisParameters(input);
-  const optionChoiceSignature = JSON.stringify({
+function buildOptionChoiceSignature(
+  input: NegotiatedPriceCombinationInput,
+  misId: string,
+  organizationIntegrationId: string,
+  plan: NegotiatedPriceExcelPlan,
+  choices: NegotiatedPriceCombinationChoice[]
+) {
+  return JSON.stringify({
     misId,
     organizationIntegrationId,
     priceEngineId: input.priceEngineId,
@@ -248,8 +260,27 @@ export async function saveDirectNegotiatedPrices(
     enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
     priceGroupName: input.priceGroupName,
     pricingBasis: plan.pricingBasis,
-    choices: row.choices
+    choices
   });
+}
+
+export async function saveDirectNegotiatedPrices(
+  input: NegotiatedPriceDirectSaveInput
+): Promise<NegotiatedPriceDirectSaveResult> {
+  assertValidDirectPrices(input.directPrices);
+  const { plan, row } = readSingleCombinationRow(input);
+  assertDirectPricesMatchPlan(input.directPrices, plan);
+
+  const misId = generateMisId(input);
+  const organizationIntegrationId = readOrganizationIntegrationId(input);
+  const parameterGroups = splitPricingBasisParameters(input);
+  const optionChoiceSignature = buildOptionChoiceSignature(
+    input,
+    misId,
+    organizationIntegrationId,
+    plan,
+    row.choices
+  );
 
   const result = await prisma.$transaction(async (tx) => {
     const profile = await tx.negotiatedPriceProfile.create({
@@ -326,6 +357,165 @@ export async function saveDirectNegotiatedPrices(
     profileId: result.profile.id,
     combinationId: result.combination.id,
     rowsSaved: input.directPrices.length
+  };
+}
+
+function assertMultiCombinationContext(
+  input: NegotiatedPriceMultiSaveInput,
+  combination: NegotiatedPriceMultiCombinationInput,
+  firstCombination: NegotiatedPriceMultiCombinationInput
+) {
+  if (combination.clientId !== input.clientId) {
+    throw new Error("Toutes les combinaisons doivent partager la meme organisation.");
+  }
+
+  if (combination.priceEngineId !== input.priceEngineId) {
+    throw new Error("Toutes les combinaisons doivent partager le meme moteur PJM.");
+  }
+
+  if (combination.enginePriceGroupIntegrationId !== input.enginePriceGroupIntegrationId) {
+    throw new Error("Toutes les combinaisons doivent partager le meme groupe de prix.");
+  }
+
+  if (combination.quantityTiersText !== firstCombination.quantityTiersText) {
+    throw new Error("Toutes les combinaisons doivent partager les memes paliers.");
+  }
+
+  if (hashJson(combination.pricingBasis ?? null) !== hashJson(firstCombination.pricingBasis ?? null)) {
+    throw new Error("Toutes les combinaisons doivent partager la meme base de calcul.");
+  }
+}
+
+export async function saveMultiNegotiatedPrices(
+  input: NegotiatedPriceMultiSaveInput
+): Promise<NegotiatedPriceMultiSaveResult> {
+  if (!input.combinations?.length) {
+    throw new Error("Ajoutez au moins une combinaison au MISID.");
+  }
+
+  const organizationIntegrationId = readOrganizationIntegrationId(input);
+  const firstCombination = input.combinations[0];
+  const preparedCombinations = input.combinations.map((combination, index) => {
+    assertMultiCombinationContext(input, combination, firstCombination);
+    assertValidDirectPrices(combination.directPrices);
+
+    const { plan, row } = readSingleCombinationRow(combination);
+    assertDirectPricesMatchPlan(combination.directPrices, plan);
+
+    return {
+      input: combination,
+      index,
+      plan,
+      row,
+      parameterGroups: splitPricingBasisParameters(combination)
+    };
+  });
+
+  const duplicate = new Set<string>();
+  for (const item of preparedCombinations) {
+    if (duplicate.has(item.row.combinationKey)) {
+      throw new Error("Une meme combinaison ne peut pas etre ajoutee deux fois au MISID.");
+    }
+    duplicate.add(item.row.combinationKey);
+  }
+
+  const misId = generateMisId(firstCombination);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const profile = await tx.negotiatedPriceProfile.create({
+      data: {
+        clientId: input.clientId,
+        organizationIntegrationId,
+        misId,
+        name: misId,
+        priceEngineId: input.priceEngineId,
+        enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
+        priceGroupName: input.priceGroupName,
+        profileMode: "multi",
+        visibilityMode: readVisibilityMode(input.visibilityMode)
+      }
+    });
+
+    const combinationIds: string[] = [];
+    let rowsSaved = 0;
+
+    for (const item of preparedCombinations) {
+      const combination = await tx.negotiatedPriceCombination.create({
+        data: {
+          profileId: profile.id,
+          combinationKey: item.row.combinationKey,
+          label: item.input.label || `Combinaison ${item.index + 1}`,
+          optionSelections: item.input.optionSelections,
+          pricingBasisSnapshot: item.plan.pricingBasis,
+          fixedParameters: item.parameterGroups.fixedParameters,
+          clientVariables: item.parameterGroups.clientVariables,
+          isDefault: item.index === 0,
+          sortOrder: item.index,
+          tiers: {
+            create: item.input.directPrices.map((price) => ({
+              tierValue: Number(price.quantity),
+              tierLabel: String(price.quantity),
+              pjmPrice:
+                price.pjmPrice === null || price.pjmPrice === undefined
+                  ? null
+                  : Number(price.pjmPrice),
+              negotiatedPrice: Number(price.negotiatedPrice)
+            }))
+          }
+        }
+      });
+      combinationIds.push(combination.id);
+
+      const optionChoiceSignature = buildOptionChoiceSignature(
+        item.input,
+        misId,
+        organizationIntegrationId,
+        item.plan,
+        item.row.choices
+      );
+
+      for (const price of item.input.directPrices) {
+        await tx.negotiatedPriceCombinationSet.create({
+          data: {
+            profileId: profile.id,
+            quantity: Number(price.quantity),
+            optionChoiceSignature,
+            combinationHash: hashJson({
+              misId,
+              combinationKey: item.row.combinationKey,
+              quantity: Number(price.quantity)
+            }),
+            pjmPrice:
+              price.pjmPrice === null || price.pjmPrice === undefined
+                ? null
+                : Number(price.pjmPrice),
+            negotiatedPrice: Number(price.negotiatedPrice)
+          }
+        });
+        rowsSaved += 1;
+      }
+    }
+
+    return {
+      profile,
+      combinationIds,
+      rowsSaved
+    };
+  });
+
+  return {
+    misId,
+    profileKey: {
+      organizationIntegrationId,
+      priceEngineId: input.priceEngineId,
+      misId
+    },
+    profileId: result.profile.id,
+    combinationId: result.combinationIds[0],
+    combinationIds: result.combinationIds,
+    profileMode: "multi",
+    combinationsSaved: result.combinationIds.length,
+    rowsSaved: result.rowsSaved
   };
 }
 

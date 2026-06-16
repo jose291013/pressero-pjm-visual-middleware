@@ -270,3 +270,23 @@ Organisation + moteur de prix + MISID
 The response also returns `profileKey`, so future Pressero endpoints can resolve the negotiated profile without relying on MISID alone.
 
 The database currently uses a composed lookup index for this key. A strict unique constraint should be added in a controlled migration after existing profiles have been backfilled with `organizationIntegrationId` and `misId`.
+
+## Sprint 22 Multi-Combination Admin
+
+The admin can now create a negotiated profile that groups several validated combinations under one MISID.
+
+New endpoint:
+
+```http
+POST /negotiated-prices/multi-save
+```
+
+The endpoint accepts one profile context and a list of combinations. Each combination carries its own selected PJM options and negotiated tier prices.
+
+The endpoint persists:
+
+- one `NegotiatedPriceProfile` with `profileMode: "multi"`;
+- one `NegotiatedPriceCombination` per validated configuration;
+- one `NegotiatedPriceTier` per tier inside each combination.
+
+The admin UI exposes a small combination basket: calculate the current combination, enter negotiated prices, add it to the MISID, then create the multi-combination MISID.

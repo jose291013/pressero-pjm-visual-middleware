@@ -739,6 +739,47 @@ tbody tr.is-selected {
   border-top: 1px solid var(--line);
 }
 
+.multi-combination-panel {
+  border-top: 1px solid var(--line);
+}
+
+.multi-combination-list {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
+.multi-combination-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+}
+
+.multi-combination-item strong,
+.multi-combination-item span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.multi-combination-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.multi-remove-button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #f0a3a3;
+  border-radius: 8px;
+  background: #fff5f5;
+  color: #b42318;
+  cursor: pointer;
+}
+
 .direct-price-list {
   display: grid;
   gap: 8px;
