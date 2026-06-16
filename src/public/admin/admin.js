@@ -6,6 +6,7 @@ const state = {
   negotiatedOptions: [],
   negotiatedCompatibility: null,
   directPricePreview: null,
+  existingProfiles: [],
   multiCombinations: []
 };
 
@@ -57,6 +58,8 @@ const els = {
   npCompatibleCount: document.getElementById("npCompatibleCount"),
   npIncompatibleCount: document.getElementById("npIncompatibleCount"),
   npPreviewColumns: document.getElementById("npPreviewColumns"),
+  npExistingProfileCount: document.getElementById("npExistingProfileCount"),
+  npExistingProfileList: document.getElementById("npExistingProfileList"),
   npDirectStatus: document.getElementById("npDirectStatus"),
   npDirectPriceList: document.getElementById("npDirectPriceList"),
   npDirectPreviewButton: document.getElementById("npDirectPreviewButton"),
@@ -742,10 +745,12 @@ async function loadNegotiatedEngine() {
   const engineId = els.npEngineSelect.value;
   state.negotiatedEngine = null;
   state.negotiatedOptions = [];
+  state.existingProfiles = [];
   clearMultiCombinations();
   renderNegotiatedPriceGroups(null);
   renderNegotiatedOptions(null);
   renderCalculationParameters(null);
+  renderExistingProfiles();
 
   if (!engineId) return;
 
@@ -756,6 +761,7 @@ async function loadNegotiatedEngine() {
     state.negotiatedEngine = response.data;
     renderNegotiatedPriceGroups(state.negotiatedEngine);
     await refreshCompatibleNegotiatedOptions();
+    await loadExistingProfiles();
     els.negotiatedStatus.textContent = "Pret";
   } catch (error) {
     els.negotiatedStatus.textContent = "Erreur";
@@ -850,6 +856,91 @@ function buildDirectSavePayload() {
     visibilityMode: readVisibilityMode(),
     directPrices: readDirectPrices()
   };
+}
+
+function currentExistingProfilesUrl() {
+  const clientId = els.npClientId.value.trim();
+  const priceEngineId = state.negotiatedEngine?.id;
+  const enginePriceGroupIntegrationId = els.npPriceGroupSelect.value;
+
+  if (!clientId || !priceEngineId || !enginePriceGroupIntegrationId) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    clientId,
+    priceEngineId,
+    enginePriceGroupIntegrationId
+  });
+  return `/negotiated-prices/profiles?${params.toString()}`;
+}
+
+function existingCombinationKeys() {
+  return new Set(
+    state.existingProfiles.flatMap((profile) => {
+      return (profile.combinations ?? []).map((combination) => combination.combinationKey);
+    })
+  );
+}
+
+function renderExistingProfiles() {
+  els.npExistingProfileCount.textContent = state.existingProfiles.length.toLocaleString("fr-FR");
+  els.npExistingProfileList.innerHTML = "";
+
+  if (!currentExistingProfilesUrl()) {
+    els.npExistingProfileList.innerHTML =
+      '<div class="empty-state">Selectionnez une organisation, un moteur et un groupe pour voir les MIS ID existants.</div>';
+    return;
+  }
+
+  if (!state.existingProfiles.length) {
+    els.npExistingProfileList.innerHTML =
+      '<div class="empty-state">Aucun MIS ID existant pour ce contexte.</div>';
+    return;
+  }
+
+  for (const profile of state.existingProfiles) {
+    const item = document.createElement("article");
+    item.className = "existing-profile-item";
+    const combinations = profile.combinations ?? [];
+    item.innerHTML = `
+      <div>
+        <strong>${html(profile.misId)}</strong>
+        <div class="existing-profile-meta">
+          <span>${html(profile.profileMode)}</span>
+          <span>${html(profile.visibilityMode)}</span>
+          <span>${html(String(profile.combinationCount))} combinaisons</span>
+          <span>${html(String(profile.tierCount))} paliers</span>
+        </div>
+      </div>
+      <div class="existing-combination-list">
+        ${combinations.map((combination) => `
+          <span>${html(combination.label || combination.optionSummary || combination.combinationKey)}</span>
+        `).join("")}
+      </div>
+    `;
+    els.npExistingProfileList.appendChild(item);
+  }
+}
+
+async function loadExistingProfiles() {
+  const url = currentExistingProfilesUrl();
+
+  if (!url) {
+    state.existingProfiles = [];
+    renderExistingProfiles();
+    return;
+  }
+
+  try {
+    const response = await getJson(url);
+    state.existingProfiles = response.data ?? [];
+    renderExistingProfiles();
+  } catch (error) {
+    state.existingProfiles = [];
+    els.npExistingProfileCount.textContent = "Erreur";
+    els.npExistingProfileList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  }
 }
 
 function buildMultiSignature(payload) {
@@ -1106,6 +1197,7 @@ async function saveDirectPrices() {
     }
 
     showDirectSaveMessage(`MISID: ${misId}`);
+    await loadExistingProfiles();
     els.npDirectStatus.textContent = "Enregistre";
     els.negotiatedStatus.textContent = "Enregistre";
   } catch (error) {
@@ -1124,6 +1216,13 @@ function addCurrentCombinationToMulti() {
 
     const payload = buildDirectSavePayload();
     assertDirectPricesReady(payload.directPrices);
+    if (
+      state.directPricePreview?.combinationKey &&
+      existingCombinationKeys().has(state.directPricePreview.combinationKey)
+    ) {
+      throw new Error("Cette combinaison existe deja dans un MIS ID existant.");
+    }
+
     const signature = buildMultiSignature(payload);
 
     if (state.multiCombinations.some((combination) => combination.signature === signature)) {
@@ -1186,6 +1285,7 @@ async function saveMultiCombinations() {
     showDirectSaveMessage(
       `MISID: ${misId} (${response.data?.combinationsSaved ?? state.multiCombinations.length} combinaisons)`
     );
+    await loadExistingProfiles();
     els.npDirectStatus.textContent = "Enregistre";
     els.negotiatedStatus.textContent = "Enregistre";
   } catch (error) {
@@ -1353,8 +1453,11 @@ els.npEngineSelect.addEventListener("change", loadNegotiatedEngine);
 els.npPriceGroupSelect.addEventListener("change", () => {
   clearMultiCombinations();
   state.negotiatedOptions = [];
+  state.existingProfiles = [];
   renderPreview({ columns: [], quantities: [], combinationCount: 0 });
+  renderExistingProfiles();
   refreshCompatibleNegotiatedOptions();
+  loadExistingProfiles();
 });
 [
   els.npClientId,
@@ -1366,10 +1469,16 @@ els.npPriceGroupSelect.addEventListener("change", () => {
   field.addEventListener("input", () => {
     clearNegotiatedCompatibility();
     clearMultiCombinations();
+    if (field === els.npClientId) {
+      loadExistingProfiles();
+    }
   });
   field.addEventListener("change", () => {
     clearNegotiatedCompatibility();
     clearMultiCombinations();
+    if (field === els.npClientId) {
+      loadExistingProfiles();
+    }
   });
 });
 els.npTierFormula.addEventListener("input", () => renderCalculationParameters());

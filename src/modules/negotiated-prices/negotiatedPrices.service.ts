@@ -20,6 +20,8 @@ import type {
   NegotiatedPriceDirectSaveInput,
   NegotiatedPriceDirectSaveResult,
   NegotiatedPriceExcelPlan,
+  NegotiatedPriceExistingProfilesInput,
+  NegotiatedPriceExistingProfile,
   NegotiatedPriceMultiCombinationInput,
   NegotiatedPriceMultiSaveInput,
   NegotiatedPriceMultiSaveResult,
@@ -171,6 +173,7 @@ export async function previewDirectNegotiatedPrices(
       "Le calcul PJM direct requiert exactement une variable client pour affecter les paliers.";
     return {
       rowCount: plan.rows.length,
+      combinationKey: plan.rows[0]?.combinationKey ?? "",
       tiers: plan.quantities.map((quantity) => ({
         quantity,
         pjmPrice: null,
@@ -207,9 +210,105 @@ export async function previewDirectNegotiatedPrices(
 
   return {
     rowCount: plan.rows.length,
+    combinationKey: plan.rows[0]?.combinationKey ?? "",
     tiers,
     warnings
   };
+}
+
+function summarizeOptionSelections(value: unknown) {
+  if (!Array.isArray(value)) return "";
+
+  return value
+    .flatMap((option) => {
+      if (!option || typeof option !== "object") return [];
+      const optionName = "optionName" in option ? String(option.optionName) : "Option";
+      const choices: unknown[] = "choices" in option && Array.isArray(option.choices)
+        ? option.choices as unknown[]
+        : [];
+
+      return choices.map((choice) => {
+        const choiceName = choice && typeof choice === "object" && "choiceName" in choice
+          ? String(choice.choiceName)
+          : "Choix";
+        return `${optionName}: ${choiceName}`;
+      });
+    })
+    .join(" | ");
+}
+
+function readExistingProfilesInput(input: NegotiatedPriceExistingProfilesInput) {
+  return {
+    organizationIntegrationId: input.clientId?.trim() ?? "",
+    priceEngineId: input.priceEngineId?.trim() ?? "",
+    enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId?.trim() ?? ""
+  };
+}
+
+export async function listExistingNegotiatedPriceProfiles(
+  input: NegotiatedPriceExistingProfilesInput
+): Promise<NegotiatedPriceExistingProfile[]> {
+  const context = readExistingProfilesInput(input);
+
+  if (
+    !context.organizationIntegrationId ||
+    !context.priceEngineId ||
+    !context.enginePriceGroupIntegrationId
+  ) {
+    return [];
+  }
+
+  const profiles = await prisma.negotiatedPriceProfile.findMany({
+    where: {
+      organizationIntegrationId: context.organizationIntegrationId,
+      priceEngineId: context.priceEngineId,
+      enginePriceGroupIntegrationId: context.enginePriceGroupIntegrationId,
+      isActive: true
+    },
+    include: {
+      combinations: {
+        orderBy: {
+          sortOrder: "asc"
+        },
+        include: {
+          tiers: {
+            orderBy: {
+              tierValue: "asc"
+            }
+          }
+        }
+      }
+    },
+    orderBy: {
+      updatedAt: "desc"
+    }
+  });
+
+  return profiles.map((profile) => {
+    const tierCount = profile.combinations.reduce((total, combination) => {
+      return total + combination.tiers.length;
+    }, 0);
+
+    return {
+      id: profile.id,
+      misId: profile.misId || profile.name,
+      profileMode: profile.profileMode,
+      visibilityMode: profile.visibilityMode,
+      combinationCount: profile.combinations.length,
+      tierCount,
+      combinations: profile.combinations.map((combination) => ({
+        id: combination.id,
+        combinationKey: combination.combinationKey,
+        label: combination.label,
+        optionSummary: summarizeOptionSelections(combination.optionSelections),
+        tierCount: combination.tiers.length,
+        tiers: combination.tiers.map((tier) => ({
+          tierValue: tier.tierValue.toString(),
+          negotiatedPrice: tier.negotiatedPrice?.toString() ?? null
+        }))
+      }))
+    };
+  });
 }
 
 function assertValidDirectPrices(directPrices: NegotiatedPriceDirectPriceInput[]) {
@@ -264,6 +363,34 @@ function buildOptionChoiceSignature(
   });
 }
 
+async function assertNoExistingCombinationForContext(
+  input: NegotiatedPriceCombinationInput,
+  organizationIntegrationId: string,
+  combinationKeys: string[]
+) {
+  const existing = await prisma.negotiatedPriceCombination.findFirst({
+    where: {
+      combinationKey: {
+        in: combinationKeys
+      },
+      profile: {
+        organizationIntegrationId,
+        priceEngineId: input.priceEngineId,
+        enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
+        isActive: true
+      }
+    },
+    include: {
+      profile: true
+    }
+  });
+
+  if (existing) {
+    const existingMisId = existing.profile.misId || existing.profile.name;
+    throw new Error(`Cette combinaison existe deja dans le MISID ${existingMisId}.`);
+  }
+}
+
 export async function saveDirectNegotiatedPrices(
   input: NegotiatedPriceDirectSaveInput
 ): Promise<NegotiatedPriceDirectSaveResult> {
@@ -273,6 +400,11 @@ export async function saveDirectNegotiatedPrices(
 
   const misId = generateMisId(input);
   const organizationIntegrationId = readOrganizationIntegrationId(input);
+  await assertNoExistingCombinationForContext(
+    input,
+    organizationIntegrationId,
+    [row.combinationKey]
+  );
   const parameterGroups = splitPricingBasisParameters(input);
   const optionChoiceSignature = buildOptionChoiceSignature(
     input,
@@ -420,6 +552,11 @@ export async function saveMultiNegotiatedPrices(
   }
 
   const misId = generateMisId(firstCombination);
+  await assertNoExistingCombinationForContext(
+    firstCombination,
+    organizationIntegrationId,
+    preparedCombinations.map((combination) => combination.row.combinationKey)
+  );
 
   const result = await prisma.$transaction(async (tx) => {
     const profile = await tx.negotiatedPriceProfile.create({

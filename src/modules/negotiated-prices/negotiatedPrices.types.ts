@@ -132,6 +132,7 @@ export type NegotiatedPriceDirectTierPreview = {
 
 export type NegotiatedPriceDirectPreviewResult = {
   rowCount: number;
+  combinationKey: string;
   tiers: NegotiatedPriceDirectTierPreview[];
   warnings: string[];
 };
@@ -180,6 +181,34 @@ export type NegotiatedPriceMultiSaveResult = NegotiatedPriceDirectSaveResult & {
   profileMode: "multi";
   combinationsSaved: number;
   combinationIds: string[];
+};
+
+export type NegotiatedPriceExistingProfilesInput = {
+  clientId?: string;
+  priceEngineId?: string;
+  enginePriceGroupIntegrationId?: string;
+};
+
+export type NegotiatedPriceExistingCombination = {
+  id: string;
+  combinationKey: string;
+  label: string | null;
+  optionSummary: string;
+  tierCount: number;
+  tiers: Array<{
+    tierValue: string;
+    negotiatedPrice: string | null;
+  }>;
+};
+
+export type NegotiatedPriceExistingProfile = {
+  id: string;
+  misId: string;
+  profileMode: NegotiatedPriceProfileMode;
+  visibilityMode: NegotiatedPriceVisibilityMode;
+  combinationCount: number;
+  tierCount: number;
+  combinations: NegotiatedPriceExistingCombination[];
 };
 
 export type NegotiatedPriceExcelPlan = {

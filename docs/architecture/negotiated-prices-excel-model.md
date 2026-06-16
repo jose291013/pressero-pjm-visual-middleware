@@ -203,6 +203,24 @@ MISID -> validated combinations -> negotiated tiers
 
 This is intentionally a liste blanche model. PJM remains responsible for compatibility while the admin creates each combination. Later, if options are visible to the Pressero customer, the customer will only navigate through choices present in the saved validated combinations.
 
+## Sprint 24 Existing Negotiated Profiles
+
+The admin workflow now exposes existing negotiated profiles for:
+
+```text
+Organisation + moteur de prix + groupe de prix
+```
+
+This lookup is separate from the final Pressero identity, which remains:
+
+```text
+Organisation + moteur de prix + MISID
+```
+
+The lookup helps administrators avoid duplicates while they are creating negotiated references. A saved combination cannot be created again in the same organization, engine and price-group context, even if the new save would generate a different MISID.
+
+This strengthens the allowlist model: every customer-facing route should come from one saved validated combination, and each saved validated combination should have one source negotiated reference in its context.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.

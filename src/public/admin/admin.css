@@ -750,6 +750,48 @@ tbody tr.is-selected {
   border-top: 1px solid var(--line);
 }
 
+.existing-profiles-panel {
+  border-top: 1px solid var(--line);
+}
+
+.existing-profile-list {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
+.existing-profile-item {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.existing-profile-item strong,
+.existing-profile-item span,
+.existing-profile-item small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.existing-profile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.existing-profile-meta span,
+.existing-combination-list span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.existing-combination-list {
+  display: grid;
+  gap: 5px;
+}
+
 .multi-combination-panel {
   border-top: 1px solid var(--line);
 }

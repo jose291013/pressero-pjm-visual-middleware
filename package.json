@@ -31,6 +31,7 @@
     "test:sprint21": "node scripts/test-sprint-21-negotiated-profile-identity.mjs",
     "test:sprint22": "node scripts/test-sprint-22-multi-combination-admin.mjs",
     "test:sprint23": "node scripts/test-sprint-23-negotiated-preview-scroll.mjs",
+    "test:sprint24": "node scripts/test-sprint-24-existing-negotiated-profiles.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

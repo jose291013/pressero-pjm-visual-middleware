@@ -290,3 +290,21 @@ The endpoint persists:
 - one `NegotiatedPriceTier` per tier inside each combination.
 
 The admin UI exposes a small combination basket: calculate the current combination, enter negotiated prices, add it to the MISID, then create the multi-combination MISID.
+
+## Sprint 24 Existing Negotiated Profiles
+
+The admin can now read negotiated profiles already saved for the current working context:
+
+```text
+Organisation + moteur de prix + groupe de prix
+```
+
+New endpoint:
+
+```http
+GET /negotiated-prices/profiles?clientId=...&priceEngineId=...&enginePriceGroupIntegrationId=...
+```
+
+The response returns active MIS ID profiles, their profile mode, visibility mode, saved combinations and tier counts. The `Prix negocies` screen displays this list in the right panel and refreshes it after context changes and saves.
+
+Direct and multi-combination saves now reject a combination that already exists in the same organization, engine and price-group context. This keeps the admin from creating several MIS ID references for the exact same validated PJM combination.

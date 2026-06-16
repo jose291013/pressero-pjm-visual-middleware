@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import {
   exportNegotiatedPriceWorkbook,
+  listExistingNegotiatedPriceProfiles,
   listCompatiblePjmOptions,
   previewNegotiatedPriceExcelPlan,
   previewDirectNegotiatedPrices,
@@ -12,6 +13,7 @@ import type {
   NegotiatedPriceCombinationInput,
   NegotiatedPriceCompatibleOptionsInput,
   NegotiatedPriceDirectSaveInput,
+  NegotiatedPriceExistingProfilesInput,
   NegotiatedPriceMultiSaveInput
 } from "./negotiatedPrices.types.js";
 
@@ -47,6 +49,17 @@ function readMultiSaveInput(value: unknown): NegotiatedPriceMultiSaveInput {
   return value as NegotiatedPriceMultiSaveInput;
 }
 
+function readExistingProfilesInput(value: Request["query"]): NegotiatedPriceExistingProfilesInput {
+  return {
+    clientId: typeof value.clientId === "string" ? value.clientId : undefined,
+    priceEngineId: typeof value.priceEngineId === "string" ? value.priceEngineId : undefined,
+    enginePriceGroupIntegrationId:
+      typeof value.enginePriceGroupIntegrationId === "string"
+        ? value.enginePriceGroupIntegrationId
+        : undefined
+  };
+}
+
 function readCompatibleOptionsInput(
   value: unknown
 ): NegotiatedPriceCompatibleOptionsInput {
@@ -61,6 +74,18 @@ export function postNegotiatedPricesPreview(req: Request, res: Response) {
   try {
     const plan = previewNegotiatedPriceExcelPlan(readPreviewInput(req.body));
     res.status(200).json({ data: plan });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(400).json({ error: message });
+  }
+}
+
+export async function getNegotiatedPricesProfiles(req: Request, res: Response) {
+  try {
+    const profiles = await listExistingNegotiatedPriceProfiles(
+      readExistingProfilesInput(req.query)
+    );
+    res.status(200).json({ data: profiles });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     res.status(400).json({ error: message });

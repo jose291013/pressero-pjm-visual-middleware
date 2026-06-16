@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getNegotiatedPricesStatus,
+  getNegotiatedPricesProfiles,
   postNegotiatedPricesCompatibleOptions,
   postNegotiatedPricesDirectPreview,
   postNegotiatedPricesDirectSave,
@@ -13,6 +14,7 @@ import {
 export const negotiatedPricesRouter = Router();
 
 negotiatedPricesRouter.get("/", getNegotiatedPricesStatus);
+negotiatedPricesRouter.get("/profiles", getNegotiatedPricesProfiles);
 negotiatedPricesRouter.post("/preview", postNegotiatedPricesPreview);
 negotiatedPricesRouter.post("/export", postNegotiatedPricesExport);
 negotiatedPricesRouter.post(
