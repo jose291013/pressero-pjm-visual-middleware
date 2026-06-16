@@ -17,6 +17,11 @@ enum NegotiatedPriceVisibilityMode {
   selectable
 }
 
+enum PresseroPricingMode {
+  pjmLive
+  negotiated
+}
+
 model PjmProductCategory {
   id               String               @id @default(cuid())
   pjmId            String               @unique
@@ -51,6 +56,7 @@ model PjmPriceEngine {
   priceGroupMappings PjmEnginePriceGroupMapping[]
   options            PjmOption[]
   negotiatedProfiles NegotiatedPriceProfile[]
+  presseroConfigs    PresseroProductConfig[]
   createdAt          DateTime                     @default(now())
   updatedAt          DateTime                     @updatedAt
 }
@@ -148,6 +154,7 @@ model NegotiatedPriceProfile {
   combinations                  NegotiatedPriceCombination[]
   combinationSets               NegotiatedPriceCombinationSet[]
   importJobs                    NegotiatedPriceImportJob[]
+  presseroConfigs               PresseroProductConfig[]
   createdAt                     DateTime                       @default(now())
   updatedAt                     DateTime                       @updatedAt
 
@@ -156,6 +163,31 @@ model NegotiatedPriceProfile {
   @@index([misId])
   @@index([priceEngineId])
   @@index([organizationIntegrationId, priceEngineId, misId])
+}
+
+model PresseroProductConfig {
+  id                            String                  @id @default(cuid())
+  misProductId                  String                  @unique
+  name                          String
+  pricingMode                   PresseroPricingMode     @default(pjmLive)
+  organizationIntegrationId     String
+  organizationName              String?
+  priceEngineId                 String
+  enginePriceGroupIntegrationId String
+  priceGroupName                String?
+  negotiatedProfileId           String?
+  notes                         String?
+  isActive                      Boolean                 @default(true)
+  priceEngine                   PjmPriceEngine          @relation(fields: [priceEngineId], references: [id])
+  negotiatedProfile             NegotiatedPriceProfile? @relation(fields: [negotiatedProfileId], references: [id])
+  createdAt                     DateTime                @default(now())
+  updatedAt                     DateTime                @updatedAt
+
+  @@index([organizationIntegrationId])
+  @@index([priceEngineId])
+  @@index([enginePriceGroupIntegrationId])
+  @@index([negotiatedProfileId])
+  @@index([pricingMode])
 }
 
 model NegotiatedPriceCombination {

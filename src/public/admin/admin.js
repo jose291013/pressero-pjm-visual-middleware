@@ -8,7 +8,9 @@ const state = {
   directPricePreview: null,
   existingProfiles: [],
   editingExistingProfileId: null,
-  multiCombinations: []
+  multiCombinations: [],
+  presseroConfigs: [],
+  presseroNegotiatedProfiles: []
 };
 
 const els = {
@@ -69,7 +71,23 @@ const els = {
   npMultiSaveButton: document.getElementById("npMultiSaveButton"),
   npMultiCount: document.getElementById("npMultiCount"),
   npMultiList: document.getElementById("npMultiList"),
-  npMisIdResult: document.getElementById("npMisIdResult")
+  npMisIdResult: document.getElementById("npMisIdResult"),
+  pcStatus: document.getElementById("pcStatus"),
+  pcForm: document.getElementById("pcForm"),
+  pcConfigId: document.getElementById("pcConfigId"),
+  pcMisProductId: document.getElementById("pcMisProductId"),
+  pcName: document.getElementById("pcName"),
+  pcOrganizationId: document.getElementById("pcOrganizationId"),
+  pcOrganizationName: document.getElementById("pcOrganizationName"),
+  pcEngineSelect: document.getElementById("pcEngineSelect"),
+  pcPriceGroupSelect: document.getElementById("pcPriceGroupSelect"),
+  pcPricingMode: document.getElementById("pcPricingMode"),
+  pcNegotiatedProfileSelect: document.getElementById("pcNegotiatedProfileSelect"),
+  pcNotes: document.getElementById("pcNotes"),
+  pcSaveButton: document.getElementById("pcSaveButton"),
+  pcResetButton: document.getElementById("pcResetButton"),
+  pcConfigCount: document.getElementById("pcConfigCount"),
+  pcConfigList: document.getElementById("pcConfigList")
 };
 
 async function getJson(url, init = {}) {
@@ -149,6 +167,8 @@ function setBusyButtons(isBusy) {
   els.npDirectSaveButton.disabled = isBusy;
   els.npAddCombinationButton.disabled = isBusy;
   els.npMultiSaveButton.disabled = isBusy;
+  els.pcSaveButton.disabled = isBusy;
+  els.pcResetButton.disabled = isBusy;
 }
 
 function setView(viewName) {
@@ -161,7 +181,11 @@ function setView(viewName) {
   });
 
   els.pageTitle.textContent =
-    viewName === "negotiated-prices" ? "Prix negocies" : "Catalogue PJM";
+    viewName === "negotiated-prices"
+      ? "Prix negocies"
+      : viewName === "pressero-products"
+        ? "Produits Pressero"
+        : "Catalogue PJM";
 }
 
 function renderSummary(summary) {
@@ -225,6 +249,7 @@ function renderFilters() {
   renderSelectOptions(els.categoryFilter, uniqueOptions(categories), "Toutes");
   renderSelectOptions(els.priceGroupFilter, uniqueOptions(priceGroups), "Tous");
   renderNegotiatedEngineSelect();
+  renderPresseroEngineSelect();
 }
 
 function renderNegotiatedEngineSelect() {
@@ -233,6 +258,36 @@ function renderNegotiatedEngineSelect() {
     label: engine.name
   }));
   renderSelectOptions(els.npEngineSelect, options, "Choisir un moteur");
+}
+
+function renderPresseroEngineSelect() {
+  const options = state.engines.map((engine) => ({
+    value: engine.id,
+    label: engine.name
+  }));
+  renderSelectOptions(els.pcEngineSelect, options, "Choisir un moteur");
+}
+
+function findEngine(engineId) {
+  return state.engines.find((engine) => engine.id === engineId) || null;
+}
+
+function renderPriceGroupSelect(select, engine, placeholder = "Choisir un groupe") {
+  const currentValue = select.value;
+  select.innerHTML = `<option value="">${html(placeholder)}</option>`;
+
+  for (const mapping of engine?.priceGroupMappings ?? []) {
+    const item = document.createElement("option");
+    item.value = mapping.enginePriceGroupIntegrationId;
+    item.textContent = mapping.priceGroup?.name || mapping.enginePriceGroupIntegrationId;
+    select.appendChild(item);
+  }
+
+  if (Array.from(select.options).some((option) => option.value === currentValue)) {
+    select.value = currentValue;
+  } else if (select.options.length > 1) {
+    select.selectedIndex = 1;
+  }
 }
 
 function engineMatchesFilters(engine) {
@@ -397,18 +452,7 @@ async function selectEngine(engineId) {
 }
 
 function renderNegotiatedPriceGroups(engine) {
-  els.npPriceGroupSelect.innerHTML = '<option value="">Choisir un groupe</option>';
-
-  for (const mapping of engine?.priceGroupMappings ?? []) {
-    const item = document.createElement("option");
-    item.value = mapping.enginePriceGroupIntegrationId;
-    item.textContent = mapping.priceGroup?.name || mapping.enginePriceGroupIntegrationId;
-    els.npPriceGroupSelect.appendChild(item);
-  }
-
-  if (els.npPriceGroupSelect.options.length > 1) {
-    els.npPriceGroupSelect.selectedIndex = 1;
-  }
+  renderPriceGroupSelect(els.npPriceGroupSelect, engine);
 }
 
 function extractOptionPjmKey(value) {
@@ -1570,21 +1614,248 @@ async function exportNegotiatedPrices() {
   }
 }
 
+function resetPresseroConfigForm() {
+  els.pcConfigId.value = "";
+  els.pcMisProductId.value = "";
+  els.pcName.value = "";
+  els.pcOrganizationId.value = "";
+  els.pcOrganizationName.value = "";
+  els.pcEngineSelect.value = "";
+  els.pcPriceGroupSelect.innerHTML = '<option value="">Choisir un groupe</option>';
+  els.pcPricingMode.value = "pjmLive";
+  els.pcNegotiatedProfileSelect.innerHTML = '<option value="">Aucun MISID</option>';
+  els.pcNotes.value = "";
+  state.presseroNegotiatedProfiles = [];
+  els.pcStatus.textContent = "Pret";
+}
+
+function renderPresseroConfigs() {
+  els.pcConfigCount.textContent = state.presseroConfigs.length.toLocaleString("fr-FR");
+  els.pcConfigList.innerHTML = "";
+
+  if (!state.presseroConfigs.length) {
+    els.pcConfigList.innerHTML = '<div class="empty-state">Aucune configuration Pressero.</div>';
+    return;
+  }
+
+  for (const config of state.presseroConfigs) {
+    const item = document.createElement("article");
+    item.className = "pressero-config-item";
+    item.innerHTML = `
+      <div>
+        <strong>${html(config.misProductId)}</strong>
+        <span>${html(config.name)} | ${html(config.pricingMode === "negotiated" ? "Prix negocie" : "PJM standard")}</span>
+        <small>${html(config.organizationIntegrationId)} | ${html(config.priceEngineName)} | ${html(config.priceGroupName)}</small>
+        ${config.negotiatedMisId ? `<small>MISID negocie: ${html(config.negotiatedMisId)}</small>` : ""}
+      </div>
+      <div class="pressero-config-actions">
+        <button type="button" class="secondary" data-pc-action="edit" data-config-id="${html(config.id)}">Modifier</button>
+        <button type="button" class="danger" data-pc-action="delete" data-config-id="${html(config.id)}">Supprimer</button>
+      </div>
+    `;
+    els.pcConfigList.appendChild(item);
+  }
+}
+
+async function loadPresseroProductConfigs() {
+  try {
+    const response = await getJson("/pressero-config/admin/product-configs");
+    state.presseroConfigs = response.data ?? [];
+    renderPresseroConfigs();
+  } catch (error) {
+    els.pcConfigCount.textContent = "Erreur";
+    els.pcConfigList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  }
+}
+
+function currentPresseroContextUrl() {
+  const clientId = els.pcOrganizationId.value.trim();
+  const priceEngineId = els.pcEngineSelect.value;
+  const enginePriceGroupIntegrationId = els.pcPriceGroupSelect.value;
+
+  if (!clientId || !priceEngineId || !enginePriceGroupIntegrationId) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    clientId,
+    priceEngineId,
+    enginePriceGroupIntegrationId
+  });
+  return `/negotiated-prices/profiles?${params.toString()}`;
+}
+
+async function loadPresseroNegotiatedProfiles(selectedProfileId = "") {
+  els.pcNegotiatedProfileSelect.innerHTML = '<option value="">Aucun MISID</option>';
+  state.presseroNegotiatedProfiles = [];
+
+  if (els.pcPricingMode.value !== "negotiated") {
+    return;
+  }
+
+  const url = currentPresseroContextUrl();
+  if (!url) {
+    return;
+  }
+
+  try {
+    const response = await getJson(url);
+    state.presseroNegotiatedProfiles = response.data ?? [];
+    for (const profile of state.presseroNegotiatedProfiles) {
+      const item = document.createElement("option");
+      item.value = profile.id;
+      item.textContent = `${profile.misId} (${profile.combinationCount} combinaisons)`;
+      els.pcNegotiatedProfileSelect.appendChild(item);
+    }
+
+    if (
+      selectedProfileId &&
+      Array.from(els.pcNegotiatedProfileSelect.options).some((option) => {
+        return option.value === selectedProfileId;
+      })
+    ) {
+      els.pcNegotiatedProfileSelect.value = selectedProfileId;
+    }
+  } catch (error) {
+    els.pcNegotiatedProfileSelect.innerHTML =
+      `<option value="">Erreur: ${html(error.message)}</option>`;
+  }
+}
+
+function buildPresseroConfigPayload() {
+  const selectedPriceGroup = els.pcPriceGroupSelect.selectedOptions[0];
+  return {
+    misProductId: els.pcMisProductId.value.trim(),
+    name: els.pcName.value.trim(),
+    pricingMode: els.pcPricingMode.value === "negotiated" ? "negotiated" : "pjmLive",
+    organizationIntegrationId: els.pcOrganizationId.value.trim(),
+    organizationName: els.pcOrganizationName.value.trim(),
+    priceEngineId: els.pcEngineSelect.value,
+    enginePriceGroupIntegrationId: els.pcPriceGroupSelect.value,
+    priceGroupName: selectedPriceGroup?.textContent || "",
+    negotiatedProfileId:
+      els.pcPricingMode.value === "negotiated" ? els.pcNegotiatedProfileSelect.value : null,
+    notes: els.pcNotes.value.trim()
+  };
+}
+
+async function savePresseroConfig(event) {
+  event.preventDefault();
+  els.pcStatus.textContent = "Enregistrement";
+  setBusyButtons(true);
+
+  try {
+    const configId = els.pcConfigId.value;
+    const response = await getJson(
+      configId
+        ? `/pressero-config/admin/product-configs/${encodeURIComponent(configId)}`
+        : "/pressero-config/admin/product-configs",
+      {
+        method: configId ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(buildPresseroConfigPayload())
+      }
+    );
+
+    els.pcConfigId.value = response.data?.id ?? "";
+    els.pcStatus.textContent = "Enregistre";
+    await loadPresseroProductConfigs();
+  } catch (error) {
+    els.pcStatus.textContent = "Erreur";
+    els.pcConfigList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+async function editPresseroConfig(configId) {
+  const config = state.presseroConfigs.find((item) => item.id === configId);
+  if (!config) return;
+
+  els.pcConfigId.value = config.id;
+  els.pcMisProductId.value = config.misProductId;
+  els.pcName.value = config.name;
+  els.pcOrganizationId.value = config.organizationIntegrationId;
+  els.pcOrganizationName.value = config.organizationName ?? "";
+  els.pcEngineSelect.value = config.priceEngineId;
+  renderPriceGroupSelect(els.pcPriceGroupSelect, findEngine(config.priceEngineId));
+  els.pcPriceGroupSelect.value = config.enginePriceGroupIntegrationId;
+  els.pcPricingMode.value = config.pricingMode;
+  els.pcNotes.value = config.notes ?? "";
+  await loadPresseroNegotiatedProfiles(config.negotiatedProfileId ?? "");
+  els.pcStatus.textContent = "Edition";
+}
+
+async function deletePresseroConfig(configId) {
+  const config = state.presseroConfigs.find((item) => item.id === configId);
+  if (!config) return;
+
+  if (!window.confirm(`Supprimer la configuration ${config.misProductId} ?`)) {
+    return;
+  }
+
+  els.pcStatus.textContent = "Suppression";
+  setBusyButtons(true);
+
+  try {
+    await getJson(`/pressero-config/admin/product-configs/${encodeURIComponent(configId)}`, {
+      method: "DELETE"
+    });
+    if (els.pcConfigId.value === configId) {
+      resetPresseroConfigForm();
+    }
+    await loadPresseroProductConfigs();
+    els.pcStatus.textContent = "Supprime";
+  } catch (error) {
+    els.pcStatus.textContent = "Erreur";
+    els.pcConfigList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+async function handlePresseroConfigAction(event) {
+  const button = event.target.closest("[data-pc-action]");
+  if (!button) return;
+
+  const configId = button.dataset.configId;
+  if (!configId) return;
+
+  if (button.dataset.pcAction === "edit") {
+    await editPresseroConfig(configId);
+    return;
+  }
+
+  if (button.dataset.pcAction === "delete") {
+    await deletePresseroConfig(configId);
+  }
+}
+
 async function loadDashboard() {
   setBusyButtons(true);
   els.detailStatus.textContent = "Chargement";
 
   try {
-    const [summaryResponse, enginesResponse, organizationsResponse] = await Promise.all([
+    const [
+      summaryResponse,
+      enginesResponse,
+      organizationsResponse,
+      presseroConfigsResponse
+    ] = await Promise.all([
       getJson("/pjm-sync/admin/summary"),
       getJson("/pjm-sync/admin/price-engines"),
-      getJson("/pjm-sync/admin/organizations")
+      getJson("/pjm-sync/admin/organizations"),
+      getJson("/pressero-config/admin/product-configs")
     ]);
 
     renderSummary(summaryResponse.data);
     state.engines = enginesResponse.data ?? [];
     state.organizations = organizationsResponse.data ?? [];
+    state.presseroConfigs = presseroConfigsResponse.data ?? [];
     renderFilters();
+    renderPresseroConfigs();
 
     if (!state.selectedEngineId && state.engines[0]) {
       state.selectedEngineId = state.engines[0].id;
@@ -1681,6 +1952,21 @@ els.npDirectSaveButton.addEventListener("click", saveDirectPrices);
 els.npAddCombinationButton.addEventListener("click", addCurrentCombinationToMulti);
 els.npMultiSaveButton.addEventListener("click", saveMultiCombinations);
 els.npExistingProfileList.addEventListener("click", handleExistingProfileAction);
+els.pcForm.addEventListener("submit", savePresseroConfig);
+els.pcResetButton.addEventListener("click", resetPresseroConfigForm);
+els.pcConfigList.addEventListener("click", handlePresseroConfigAction);
+els.pcEngineSelect.addEventListener("change", () => {
+  renderPriceGroupSelect(els.pcPriceGroupSelect, findEngine(els.pcEngineSelect.value));
+  loadPresseroNegotiatedProfiles();
+});
+[
+  els.pcOrganizationId,
+  els.pcPriceGroupSelect,
+  els.pcPricingMode
+].forEach((field) => {
+  field.addEventListener("input", () => loadPresseroNegotiatedProfiles());
+  field.addEventListener("change", () => loadPresseroNegotiatedProfiles());
+});
 els.viewLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();

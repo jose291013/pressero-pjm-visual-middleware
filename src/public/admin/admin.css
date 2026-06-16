@@ -950,6 +950,127 @@ tbody tr.is-selected {
   color: #b42318;
 }
 
+.pressero-config-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.75fr) minmax(520px, 1.25fr);
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pressero-config-form-panel,
+.pressero-config-list-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.pressero-config-form,
+.pressero-config-list {
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.pressero-config-form {
+  display: grid;
+  gap: 12px;
+}
+
+.pressero-config-form label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.pressero-config-form span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pressero-config-form input,
+.pressero-config-form select,
+.pressero-config-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 8px 10px;
+}
+
+.pressero-config-form input,
+.pressero-config-form select {
+  height: 36px;
+}
+
+.pressero-config-form textarea {
+  resize: vertical;
+  min-height: 88px;
+  line-height: 1.35;
+}
+
+.pressero-config-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.pressero-config-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px;
+}
+
+.pressero-config-item strong,
+.pressero-config-item span,
+.pressero-config-item small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.pressero-config-item span,
+.pressero-config-item small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pressero-config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pressero-config-actions button {
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.pressero-config-actions .danger {
+  border-color: #f0a3a3;
+  color: #b42318;
+}
+
 .column-chip {
   max-width: 100%;
   padding: 5px 8px;
@@ -987,7 +1108,7 @@ tbody tr.is-selected {
   }
 
   .nav-list {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .workspace {
@@ -996,6 +1117,11 @@ tbody tr.is-selected {
   }
 
   .negotiated-layout {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .pressero-config-layout {
     grid-template-columns: 1fr;
     overflow: visible;
   }

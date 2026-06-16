@@ -27,6 +27,7 @@
           <a aria-disabled="true">Images</a>
           <a aria-disabled="true">Mappings</a>
           <a href="#negotiated-prices" data-view-link="negotiated-prices">Prix negocies</a>
+          <a href="#pressero-products" data-view-link="pressero-products">Produits Pressero</a>
         </nav>
       </aside>
 
@@ -366,6 +367,88 @@
                   </button>
                 </div>
               </section>
+            </aside>
+          </section>
+        </section>
+
+        <section class="admin-view" id="presseroProductsView" data-view="pressero-products">
+          <section class="pressero-config-layout">
+            <div class="pressero-config-form-panel">
+              <div class="panel-heading">
+                <h2>Configuration MIS Product ID</h2>
+                <span class="status-pill" id="pcStatus">Pret</span>
+              </div>
+              <form class="pressero-config-form" id="pcForm">
+                <input id="pcConfigId" type="hidden">
+                <label>
+                  <span>MIS Product ID Pressero</span>
+                  <input id="pcMisProductId" type="text" placeholder="MWP-BOOKLET-001">
+                </label>
+                <label>
+                  <span>Nom</span>
+                  <input id="pcName" type="text" placeholder="Nom lisible">
+                </label>
+                <label>
+                  <span>Organisation ID</span>
+                  <input id="pcOrganizationId" type="text" placeholder="organizationIntegrationId">
+                </label>
+                <label>
+                  <span>Organisation</span>
+                  <input id="pcOrganizationName" type="text" placeholder="Nom lisible">
+                </label>
+                <label>
+                  <span>Moteur PJM</span>
+                  <select id="pcEngineSelect">
+                    <option value="">Choisir un moteur</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Groupe de prix</span>
+                  <select id="pcPriceGroupSelect">
+                    <option value="">Choisir un groupe</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Mode de prix</span>
+                  <select id="pcPricingMode">
+                    <option value="pjmLive">PJM standard</option>
+                    <option value="negotiated">Prix negocie</option>
+                  </select>
+                </label>
+                <label class="pc-negotiated-field">
+                  <span>MISID negocie</span>
+                  <select id="pcNegotiatedProfileSelect">
+                    <option value="">Aucun MISID</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Notes</span>
+                  <textarea id="pcNotes" rows="4" placeholder="Usage, produit Pressero, groupe utilisateur..."></textarea>
+                </label>
+                <div class="panel-footer">
+                  <button class="action-button" id="pcSaveButton" type="submit">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path>
+                      <path d="M17 21v-8H7v8"></path>
+                      <path d="M7 3v5h8"></path>
+                    </svg>
+                    Enregistrer
+                  </button>
+                  <button class="action-button" id="pcResetButton" type="button">
+                    Nouveau
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <aside class="pressero-config-list-panel">
+              <div class="panel-heading">
+                <h2>Configurations actives</h2>
+                <span class="panel-count" id="pcConfigCount">0</span>
+              </div>
+              <div class="pressero-config-list" id="pcConfigList">
+                <div class="empty-state">Aucune configuration Pressero.</div>
+              </div>
             </aside>
           </section>
         </section>

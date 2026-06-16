@@ -1,3 +1,232 @@
+import type { Prisma } from "@prisma/client";
+import { prisma } from "../../config/prisma.js";
+import type {
+  PresseroPricingMode,
+  PresseroProductConfigInput,
+  PresseroProductConfigSummary
+} from "./presseroConfig.types.js";
+
+const productConfigInclude = {
+  priceEngine: true,
+  negotiatedProfile: true
+} satisfies Prisma.PresseroProductConfigInclude;
+
+type ProductConfigRecord = Prisma.PresseroProductConfigGetPayload<{
+  include: typeof productConfigInclude;
+}>;
+
 export function getPresseroConfigModuleName() {
   return "pressero-config";
+}
+
+function serializeProductConfig(
+  config: ProductConfigRecord
+): PresseroProductConfigSummary {
+  return {
+    id: config.id,
+    misProductId: config.misProductId,
+    name: config.name,
+    pricingMode: config.pricingMode,
+    organizationIntegrationId: config.organizationIntegrationId,
+    organizationName: config.organizationName,
+    priceEngineId: config.priceEngineId,
+    priceEngineName: config.priceEngine.name,
+    enginePriceGroupIntegrationId: config.enginePriceGroupIntegrationId,
+    priceGroupName: config.priceGroupName,
+    negotiatedProfileId: config.negotiatedProfileId,
+    negotiatedMisId: config.negotiatedProfile?.misId ?? null,
+    notes: config.notes,
+    isActive: config.isActive,
+    updatedAt: config.updatedAt.toISOString()
+  };
+}
+
+function readPricingMode(value: string): PresseroPricingMode {
+  return value === "negotiated" ? "negotiated" : "pjmLive";
+}
+
+function normalizeInput(input: PresseroProductConfigInput) {
+  const pricingMode = readPricingMode(input.pricingMode);
+  return {
+    misProductId: input.misProductId?.trim() ?? "",
+    name: input.name?.trim() ?? "",
+    pricingMode,
+    organizationIntegrationId: input.organizationIntegrationId?.trim() ?? "",
+    organizationName: input.organizationName?.trim() || null,
+    priceEngineId: input.priceEngineId?.trim() ?? "",
+    enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId?.trim() ?? "",
+    priceGroupName: input.priceGroupName?.trim() || null,
+    negotiatedProfileId:
+      pricingMode === "negotiated" ? input.negotiatedProfileId?.trim() || null : null,
+    notes: input.notes?.trim() || null
+  };
+}
+
+async function assertProductConfigContext(
+  input: ReturnType<typeof normalizeInput>
+) {
+  if (!input.misProductId) {
+    throw new Error("MIS Product ID obligatoire.");
+  }
+
+  if (!input.name) {
+    throw new Error("Nom de configuration obligatoire.");
+  }
+
+  if (!input.organizationIntegrationId) {
+    throw new Error("Organisation ID obligatoire.");
+  }
+
+  if (!input.priceEngineId) {
+    throw new Error("Moteur PJM obligatoire.");
+  }
+
+  if (!input.enginePriceGroupIntegrationId) {
+    throw new Error("Groupe de prix obligatoire.");
+  }
+
+  const mapping = await prisma.pjmEnginePriceGroupMapping.findFirst({
+    where: {
+      priceEngineId: input.priceEngineId,
+      enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId
+    },
+    include: {
+      priceGroup: true
+    }
+  });
+
+  if (!mapping) {
+    throw new Error("Le groupe de prix ne correspond pas au moteur PJM choisi.");
+  }
+
+  if (input.pricingMode === "negotiated") {
+    if (!input.negotiatedProfileId) {
+      throw new Error("MISID negocie obligatoire pour le mode prix negocie.");
+    }
+
+    const profile = await prisma.negotiatedPriceProfile.findFirst({
+      where: {
+        id: input.negotiatedProfileId,
+        isActive: true
+      }
+    });
+
+    if (!profile) {
+      throw new Error("MISID negocie introuvable ou inactif.");
+    }
+
+    if (
+      profile.organizationIntegrationId !== input.organizationIntegrationId ||
+      profile.priceEngineId !== input.priceEngineId ||
+      profile.enginePriceGroupIntegrationId !== input.enginePriceGroupIntegrationId
+    ) {
+      throw new Error("Le MISID negocie ne correspond pas au contexte Pressero.");
+    }
+  }
+
+  return {
+    priceGroupName: input.priceGroupName || mapping.priceGroup.name
+  };
+}
+
+function readConfigId(configId: string) {
+  const id = configId.trim();
+  if (!id) {
+    throw new Error("Configuration ID obligatoire.");
+  }
+  return id;
+}
+
+export async function listPresseroProductConfigs() {
+  const configs = await prisma.presseroProductConfig.findMany({
+    where: {
+      isActive: true
+    },
+    include: productConfigInclude,
+    orderBy: {
+      updatedAt: "desc"
+    }
+  });
+
+  return configs.map(serializeProductConfig);
+}
+
+export async function createPresseroProductConfig(
+  input: PresseroProductConfigInput
+): Promise<PresseroProductConfigSummary> {
+  const normalized = normalizeInput(input);
+  const context = await assertProductConfigContext(normalized);
+
+  const config = await prisma.presseroProductConfig.create({
+    data: {
+      ...normalized,
+      priceGroupName: context.priceGroupName
+    },
+    include: productConfigInclude
+  });
+
+  return serializeProductConfig(config);
+}
+
+export async function updatePresseroProductConfig(
+  configId: string,
+  input: PresseroProductConfigInput
+): Promise<PresseroProductConfigSummary> {
+  const id = readConfigId(configId);
+  const normalized = normalizeInput(input);
+  const context = await assertProductConfigContext(normalized);
+
+  const existing = await prisma.presseroProductConfig.findFirst({
+    where: {
+      id,
+      isActive: true
+    }
+  });
+
+  if (!existing) {
+    throw new Error("Configuration Pressero introuvable ou inactive.");
+  }
+
+  const config = await prisma.presseroProductConfig.update({
+    where: {
+      id
+    },
+    data: {
+      ...normalized,
+      priceGroupName: context.priceGroupName
+    },
+    include: productConfigInclude
+  });
+
+  return serializeProductConfig(config);
+}
+
+export async function deletePresseroProductConfig(configId: string) {
+  const id = readConfigId(configId);
+  const existing = await prisma.presseroProductConfig.findFirst({
+    where: {
+      id,
+      isActive: true
+    }
+  });
+
+  if (!existing) {
+    throw new Error("Configuration Pressero introuvable ou deja supprimee.");
+  }
+
+  const config = await prisma.presseroProductConfig.update({
+    where: {
+      id
+    },
+    data: {
+      isActive: false
+    },
+    include: productConfigInclude
+  });
+
+  return {
+    id: config.id,
+    misProductId: config.misProductId,
+    deleted: true
+  };
 }
