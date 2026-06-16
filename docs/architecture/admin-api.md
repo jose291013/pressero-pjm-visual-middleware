@@ -249,3 +249,24 @@ The `MISID` is the future reference that Pressero will send to the middleware to
 The admin UI now treats the `MISID` returned by `POST /negotiated-prices/direct-save` as mandatory.
 
 After a successful save, the reference is displayed in a visible success block inside the `Prix directs` panel. If the response does not contain a `MISID`, the UI raises an explicit error. Save errors are shown without clearing the negotiated prices already entered by the administrator.
+
+## Sprint 21 Negotiated Profile Identity
+
+The negotiated-price identity is now explicit:
+
+```text
+Organisation + moteur de prix + MISID
+```
+
+`POST /negotiated-prices/direct-save` still creates a single-combination profile, but the saved profile now stores:
+
+- the organization integration ID;
+- the PJM price engine ID;
+- the generated MISID;
+- the engine price group integration ID;
+- the profile mode, currently `single`;
+- the visibility mode, currently `hidden`.
+
+The response also returns `profileKey`, so future Pressero endpoints can resolve the negotiated profile without relying on MISID alone.
+
+The database currently uses a composed lookup index for this key. A strict unique constraint should be added in a controlled migration after existing profiles have been backfilled with `organizationIntegrationId` and `misId`.

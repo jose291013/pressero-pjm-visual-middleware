@@ -7,6 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum NegotiatedPriceProfileMode {
+  single
+  multi
+}
+
+enum NegotiatedPriceVisibilityMode {
+  hidden
+  selectable
+}
+
 model PjmProductCategory {
   id               String               @id @default(cuid())
   pjmId            String               @unique
@@ -123,19 +133,67 @@ model VisualOptionMapping {
 }
 
 model NegotiatedPriceProfile {
-  id              String                          @id @default(cuid())
-  clientId        String
-  name            String
-  priceEngineId   String?
-  isActive        Boolean                         @default(true)
-  priceEngine     PjmPriceEngine?                 @relation(fields: [priceEngineId], references: [id])
-  combinationSets NegotiatedPriceCombinationSet[]
-  importJobs      NegotiatedPriceImportJob[]
-  createdAt       DateTime                        @default(now())
-  updatedAt       DateTime                        @updatedAt
+  id                            String                         @id @default(cuid())
+  clientId                      String
+  organizationIntegrationId     String?
+  misId                         String?
+  name                          String
+  priceEngineId                 String?
+  enginePriceGroupIntegrationId String?
+  priceGroupName                String?
+  profileMode                   NegotiatedPriceProfileMode      @default(single)
+  visibilityMode                NegotiatedPriceVisibilityMode   @default(hidden)
+  isActive                      Boolean                        @default(true)
+  priceEngine                   PjmPriceEngine?                @relation(fields: [priceEngineId], references: [id])
+  combinations                  NegotiatedPriceCombination[]
+  combinationSets               NegotiatedPriceCombinationSet[]
+  importJobs                    NegotiatedPriceImportJob[]
+  createdAt                     DateTime                       @default(now())
+  updatedAt                     DateTime                       @updatedAt
 
   @@index([clientId])
+  @@index([organizationIntegrationId])
+  @@index([misId])
   @@index([priceEngineId])
+  @@index([organizationIntegrationId, priceEngineId, misId])
+}
+
+model NegotiatedPriceCombination {
+  id                   String                 @id @default(cuid())
+  profileId            String
+  combinationKey        String
+  label                String?
+  optionSelections     Json
+  pricingBasisSnapshot Json
+  fixedParameters      Json?
+  clientVariables      Json?
+  isDefault            Boolean                @default(false)
+  sortOrder            Int                    @default(0)
+  status               String                 @default("active")
+  profile              NegotiatedPriceProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  tiers                NegotiatedPriceTier[]
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  @@index([profileId])
+  @@index([status])
+  @@unique([profileId, combinationKey])
+}
+
+model NegotiatedPriceTier {
+  id              String                     @id @default(cuid())
+  combinationId   String
+  tierValue       Decimal                    @db.Decimal(12, 4)
+  tierLabel       String?
+  pjmPrice        Decimal?                   @db.Decimal(12, 4)
+  negotiatedPrice Decimal?                   @db.Decimal(12, 4)
+  currency        String                     @default("EUR")
+  combination     NegotiatedPriceCombination @relation(fields: [combinationId], references: [id], onDelete: Cascade)
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  @@index([combinationId])
+  @@unique([combinationId, tierValue])
 }
 
 model NegotiatedPriceCombinationSet {

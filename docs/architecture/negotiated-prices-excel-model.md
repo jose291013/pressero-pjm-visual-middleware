@@ -169,6 +169,28 @@ Direct save now gives the administrator an explicit visual confirmation.
 
 The returned MISID is shown in a persistent success block in the `Prix directs` panel. Missing MISID responses are treated as errors, because Pressero will need that reference to request the negotiated form and later retrieve the right price.
 
+## Sprint 21 Negotiated Profile Identity
+
+The negotiated price model now separates the profile identity from the saved combination data.
+
+The functional key is:
+
+```text
+Organisation + moteur de prix + MISID
+```
+
+The target storage model is:
+
+```text
+Profile -> Combination -> Tier
+```
+
+This prepares multi-combination profiles without forcing the client to rebuild PJM incompatibility rules. A profile can later contain several validated combinations, and each combination can own its negotiated tier prices.
+
+For compatibility with the previous direct-save flow, legacy `NegotiatedPriceCombinationSet` rows are still written while the new `NegotiatedPriceCombination` and `NegotiatedPriceTier` records are introduced.
+
+The composed key is indexed first, not enforced as a database unique constraint yet, to avoid a risky schema push on existing local data. The strict unique constraint belongs in a later migration/backfill sprint.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.

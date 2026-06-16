@@ -77,6 +77,9 @@ export type NegotiatedPricePricingBasis = {
   parameters: NegotiatedPriceCalculationParameter[];
 };
 
+export type NegotiatedPriceProfileMode = "single" | "multi";
+export type NegotiatedPriceVisibilityMode = "hidden" | "selectable";
+
 export type NegotiatedPriceCombinationInput = {
   clientId: string;
   organizationName?: string;
@@ -140,12 +143,20 @@ export type NegotiatedPriceDirectPriceInput = {
 };
 
 export type NegotiatedPriceDirectSaveInput = NegotiatedPriceCombinationInput & {
+  profileMode?: NegotiatedPriceProfileMode;
+  visibilityMode?: NegotiatedPriceVisibilityMode;
   directPrices: NegotiatedPriceDirectPriceInput[];
 };
 
 export type NegotiatedPriceDirectSaveResult = {
   misId: string;
+  profileKey: {
+    organizationIntegrationId: string;
+    priceEngineId: string;
+    misId: string;
+  };
   profileId: string;
+  combinationId: string;
   rowsSaved: number;
 };
 

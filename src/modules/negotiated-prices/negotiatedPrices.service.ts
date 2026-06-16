@@ -61,6 +61,33 @@ function generateMisId(input: NegotiatedPriceCombinationInput) {
   return `MIS-${client}-${engine}-${suffix}`;
 }
 
+function readOrganizationIntegrationId(input: NegotiatedPriceCombinationInput) {
+  const organizationIntegrationId = input.clientId?.trim();
+
+  if (!organizationIntegrationId) {
+    throw new Error("Organisation ID est obligatoire.");
+  }
+
+  return organizationIntegrationId;
+}
+
+function readDirectProfileMode(input: NegotiatedPriceDirectSaveInput) {
+  return input.profileMode === "multi" ? "multi" : "single";
+}
+
+function readDirectVisibilityMode(input: NegotiatedPriceDirectSaveInput) {
+  return input.visibilityMode === "selectable" ? "selectable" : "hidden";
+}
+
+function splitPricingBasisParameters(input: NegotiatedPriceCombinationInput) {
+  const parameters = input.pricingBasis?.parameters ?? [];
+
+  return {
+    fixedParameters: parameters.filter((parameter) => parameter.role !== "clientVariable"),
+    clientVariables: parameters.filter((parameter) => parameter.role === "clientVariable")
+  };
+}
+
 function readSingleCombinationRow(input: NegotiatedPriceCombinationInput) {
   const plan = buildNegotiatedPriceExcelPlan({
     ...input,
@@ -211,8 +238,11 @@ export async function saveDirectNegotiatedPrices(
   }
 
   const misId = generateMisId(input);
+  const organizationIntegrationId = readOrganizationIntegrationId(input);
+  const parameterGroups = splitPricingBasisParameters(input);
   const optionChoiceSignature = JSON.stringify({
     misId,
+    organizationIntegrationId,
     priceEngineId: input.priceEngineId,
     priceEngineName: input.priceEngineName,
     enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
@@ -225,8 +255,38 @@ export async function saveDirectNegotiatedPrices(
     const profile = await tx.negotiatedPriceProfile.create({
       data: {
         clientId: input.clientId,
+        organizationIntegrationId,
+        misId,
         name: misId,
-        priceEngineId: input.priceEngineId
+        priceEngineId: input.priceEngineId,
+        enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
+        priceGroupName: input.priceGroupName,
+        profileMode: readDirectProfileMode(input),
+        visibilityMode: readDirectVisibilityMode(input)
+      }
+    });
+
+    const combination = await tx.negotiatedPriceCombination.create({
+      data: {
+        profileId: profile.id,
+        combinationKey: row.combinationKey,
+        label: input.priceEngineName,
+        optionSelections: input.optionSelections,
+        pricingBasisSnapshot: plan.pricingBasis,
+        fixedParameters: parameterGroups.fixedParameters,
+        clientVariables: parameterGroups.clientVariables,
+        isDefault: true,
+        tiers: {
+          create: input.directPrices.map((price) => ({
+            tierValue: Number(price.quantity),
+            tierLabel: String(price.quantity),
+            pjmPrice:
+              price.pjmPrice === null || price.pjmPrice === undefined
+                ? null
+                : Number(price.pjmPrice),
+            negotiatedPrice: Number(price.negotiatedPrice)
+          }))
+        }
       }
     });
 
@@ -250,12 +310,21 @@ export async function saveDirectNegotiatedPrices(
       });
     }
 
-    return profile;
+    return {
+      profile,
+      combination
+    };
   });
 
   return {
     misId,
-    profileId: result.id,
+    profileKey: {
+      organizationIntegrationId,
+      priceEngineId: input.priceEngineId,
+      misId
+    },
+    profileId: result.profile.id,
+    combinationId: result.combination.id,
     rowsSaved: input.directPrices.length
   };
 }
