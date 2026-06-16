@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { buildNegotiatedPriceExcelPlan } from "./negotiatedPricesExcel.service.js";
 import { buildNegotiatedPriceWorkbookExport } from "./negotiatedPricesWorkbook.service.js";
@@ -20,6 +21,7 @@ import type {
   NegotiatedPriceDirectSaveInput,
   NegotiatedPriceDirectSaveResult,
   NegotiatedPriceExcelPlan,
+  NegotiatedPriceExistingProfileUpdateInput,
   NegotiatedPriceExistingProfilesInput,
   NegotiatedPriceExistingProfile,
   NegotiatedPriceMultiCombinationInput,
@@ -37,6 +39,25 @@ export function previewNegotiatedPriceExcelPlan(
 ): NegotiatedPriceExcelPlan {
   return buildNegotiatedPriceExcelPlan(input);
 }
+
+const existingProfileInclude = {
+  combinations: {
+    orderBy: {
+      sortOrder: "asc"
+    },
+    include: {
+      tiers: {
+        orderBy: {
+          tierValue: "asc"
+        }
+      }
+    }
+  }
+} satisfies Prisma.NegotiatedPriceProfileInclude;
+
+type ExistingProfileRecord = Prisma.NegotiatedPriceProfileGetPayload<{
+  include: typeof existingProfileInclude;
+}>;
 
 export function exportNegotiatedPriceWorkbook(
   input: NegotiatedPriceCombinationInput
@@ -245,6 +266,36 @@ function readExistingProfilesInput(input: NegotiatedPriceExistingProfilesInput) 
   };
 }
 
+function serializeExistingProfile(
+  profile: ExistingProfileRecord
+): NegotiatedPriceExistingProfile {
+  const tierCount = profile.combinations.reduce((total, combination) => {
+    return total + combination.tiers.length;
+  }, 0);
+
+  return {
+    id: profile.id,
+    misId: profile.misId || profile.name,
+    profileMode: profile.profileMode,
+    visibilityMode: profile.visibilityMode,
+    combinationCount: profile.combinations.length,
+    tierCount,
+    combinations: profile.combinations.map((combination) => ({
+      id: combination.id,
+      combinationKey: combination.combinationKey,
+      label: combination.label,
+      optionSummary: summarizeOptionSelections(combination.optionSelections),
+      tierCount: combination.tiers.length,
+      tiers: combination.tiers.map((tier) => ({
+        id: tier.id,
+        tierValue: tier.tierValue.toString(),
+        pjmPrice: tier.pjmPrice?.toString() ?? null,
+        negotiatedPrice: tier.negotiatedPrice?.toString() ?? null
+      }))
+    }))
+  };
+}
+
 export async function listExistingNegotiatedPriceProfiles(
   input: NegotiatedPriceExistingProfilesInput
 ): Promise<NegotiatedPriceExistingProfile[]> {
@@ -265,50 +316,171 @@ export async function listExistingNegotiatedPriceProfiles(
       enginePriceGroupIntegrationId: context.enginePriceGroupIntegrationId,
       isActive: true
     },
-    include: {
-      combinations: {
-        orderBy: {
-          sortOrder: "asc"
-        },
-        include: {
-          tiers: {
-            orderBy: {
-              tierValue: "asc"
-            }
-          }
-        }
-      }
-    },
+    include: existingProfileInclude,
     orderBy: {
       updatedAt: "desc"
     }
   });
 
-  return profiles.map((profile) => {
-    const tierCount = profile.combinations.reduce((total, combination) => {
-      return total + combination.tiers.length;
-    }, 0);
+  return profiles.map(serializeExistingProfile);
+}
 
-    return {
-      id: profile.id,
-      misId: profile.misId || profile.name,
-      profileMode: profile.profileMode,
-      visibilityMode: profile.visibilityMode,
-      combinationCount: profile.combinations.length,
-      tierCount,
-      combinations: profile.combinations.map((combination) => ({
-        id: combination.id,
-        combinationKey: combination.combinationKey,
-        label: combination.label,
-        optionSummary: summarizeOptionSelections(combination.optionSelections),
-        tierCount: combination.tiers.length,
-        tiers: combination.tiers.map((tier) => ({
-          tierValue: tier.tierValue.toString(),
-          negotiatedPrice: tier.negotiatedPrice?.toString() ?? null
-        }))
-      }))
-    };
+function readProfileId(profileId: string) {
+  const id = profileId.trim();
+  if (!id) {
+    throw new Error("Profile ID obligatoire.");
+  }
+  return id;
+}
+
+function assertEditableNegotiatedPrice(value: number | null, tierValue: string) {
+  if (value === null) {
+    return;
+  }
+
+  if (!Number.isFinite(Number(value))) {
+    throw new Error(`Prix negocie invalide pour le palier ${tierValue}.`);
+  }
+}
+
+export async function updateExistingNegotiatedPriceProfile(
+  profileId: string,
+  input: NegotiatedPriceExistingProfileUpdateInput
+): Promise<NegotiatedPriceExistingProfile> {
+  const id = readProfileId(profileId);
+  const profile = await prisma.negotiatedPriceProfile.findFirst({
+    where: {
+      id,
+      isActive: true
+    },
+    include: existingProfileInclude
   });
+
+  if (!profile) {
+    throw new Error("MIS ID introuvable ou inactif.");
+  }
+
+  const combinationsById = new Map(
+    profile.combinations.map((combination) => [combination.id, combination])
+  );
+
+  for (const combinationInput of input.combinations ?? []) {
+    const combination = combinationsById.get(combinationInput.id);
+    if (!combination) {
+      throw new Error("Combinaison introuvable pour ce MIS ID.");
+    }
+
+    const tiersById = new Map(combination.tiers.map((tier) => [tier.id, tier]));
+    for (const tierInput of combinationInput.tiers ?? []) {
+      const tier = tiersById.get(tierInput.id);
+      if (!tier) {
+        throw new Error("Palier introuvable pour cette combinaison.");
+      }
+      assertEditableNegotiatedPrice(tierInput.negotiatedPrice, tier.tierValue.toString());
+    }
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (input.visibilityMode) {
+      await tx.negotiatedPriceProfile.update({
+        where: {
+          id: profile.id
+        },
+        data: {
+          visibilityMode: readVisibilityMode(input.visibilityMode)
+        }
+      });
+    }
+
+    for (const combinationInput of input.combinations ?? []) {
+      const combination = combinationsById.get(combinationInput.id);
+      if (!combination) continue;
+
+      for (const tierInput of combinationInput.tiers ?? []) {
+        const tier = combination.tiers.find((candidate) => candidate.id === tierInput.id);
+        if (!tier) continue;
+
+        await tx.negotiatedPriceTier.update({
+          where: {
+            id: tier.id
+          },
+          data: {
+            negotiatedPrice:
+              tierInput.negotiatedPrice === null ? null : Number(tierInput.negotiatedPrice)
+          }
+        });
+
+        await tx.negotiatedPriceCombinationSet.updateMany({
+          where: {
+            profileId: profile.id,
+            combinationHash: hashJson({
+              misId: profile.misId || profile.name,
+              combinationKey: combination.combinationKey,
+              quantity: Number(tier.tierValue)
+            })
+          },
+          data: {
+            negotiatedPrice:
+              tierInput.negotiatedPrice === null ? null : Number(tierInput.negotiatedPrice)
+          }
+        });
+      }
+    }
+
+    return tx.negotiatedPriceProfile.findFirstOrThrow({
+      where: {
+        id: profile.id,
+        isActive: true
+      },
+      include: existingProfileInclude
+    });
+  });
+
+  return serializeExistingProfile(updated);
+}
+
+export async function deleteExistingNegotiatedPriceProfile(profileId: string) {
+  const id = readProfileId(profileId);
+  const profile = await prisma.negotiatedPriceProfile.findFirst({
+    where: {
+      id,
+      isActive: true
+    },
+    select: {
+      id: true,
+      misId: true,
+      name: true
+    }
+  });
+
+  if (!profile) {
+    throw new Error("MIS ID introuvable ou deja supprime.");
+  }
+
+  await prisma.$transaction([
+    prisma.negotiatedPriceCombination.updateMany({
+      where: {
+        profileId: profile.id
+      },
+      data: {
+        status: "deleted"
+      }
+    }),
+    prisma.negotiatedPriceProfile.update({
+      where: {
+        id: profile.id
+      },
+      data: {
+        isActive: false
+      }
+    })
+  ]);
+
+  return {
+    profileId: profile.id,
+    misId: profile.misId || profile.name,
+    deleted: true
+  };
 }
 
 function assertValidDirectPrices(directPrices: NegotiatedPriceDirectPriceInput[]) {

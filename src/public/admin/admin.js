@@ -7,6 +7,7 @@ const state = {
   negotiatedCompatibility: null,
   directPricePreview: null,
   existingProfiles: [],
+  editingExistingProfileId: null,
   multiCombinations: []
 };
 
@@ -746,6 +747,7 @@ async function loadNegotiatedEngine() {
   state.negotiatedEngine = null;
   state.negotiatedOptions = [];
   state.existingProfiles = [];
+  state.editingExistingProfileId = null;
   clearMultiCombinations();
   renderNegotiatedPriceGroups(null);
   renderNegotiatedOptions(null);
@@ -883,6 +885,59 @@ function existingCombinationKeys() {
   );
 }
 
+function findExistingProfile(profileId) {
+  return state.existingProfiles.find((profile) => profile.id === profileId) || null;
+}
+
+function formatStoredPrice(value) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? number.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : String(value);
+}
+
+function renderExistingTierEditor(profile) {
+  const tierRows = (profile.combinations ?? []).flatMap((combination, combinationIndex) => {
+    return (combination.tiers ?? []).map((tier) => `
+      <label class="existing-tier-row">
+        <span>
+          <strong>${html(combination.label || `Combinaison ${combinationIndex + 1}`)}</strong>
+          <small>Palier ${html(tier.tierValue)} | PJM ${html(formatStoredPrice(tier.pjmPrice))}</small>
+        </span>
+        <input
+          type="number"
+          step="0.01"
+          value="${html(tier.negotiatedPrice ?? "")}"
+          data-existing-tier-id="${html(tier.id)}"
+        />
+      </label>
+    `);
+  }).join("");
+
+  return `
+    <div class="existing-profile-editor">
+      <label>
+        <span>Options cote client</span>
+        <select data-existing-visibility="${html(profile.id)}">
+          <option value="hidden" ${profile.visibilityMode === "hidden" ? "selected" : ""}>Masquees</option>
+          <option value="selectable" ${profile.visibilityMode === "selectable" ? "selected" : ""}>Selectionnables</option>
+        </select>
+      </label>
+      <div class="existing-tier-list">
+        ${tierRows || '<div class="empty-state">Aucun palier enregistre.</div>'}
+      </div>
+      <div class="existing-profile-actions">
+        <button type="button" class="secondary" data-existing-action="cancel">Annuler</button>
+        <button type="button" data-existing-action="save" data-profile-id="${html(profile.id)}">Enregistrer</button>
+      </div>
+    </div>
+  `;
+}
+
 function renderExistingProfiles() {
   els.npExistingProfileCount.textContent = state.existingProfiles.length.toLocaleString("fr-FR");
   els.npExistingProfileList.innerHTML = "";
@@ -903,6 +958,7 @@ function renderExistingProfiles() {
     const item = document.createElement("article");
     item.className = "existing-profile-item";
     const combinations = profile.combinations ?? [];
+    const isEditing = state.editingExistingProfileId === profile.id;
     item.innerHTML = `
       <div>
         <strong>${html(profile.misId)}</strong>
@@ -918,6 +974,15 @@ function renderExistingProfiles() {
           <span>${html(combination.label || combination.optionSummary || combination.combinationKey)}</span>
         `).join("")}
       </div>
+      ${isEditing ? renderExistingTierEditor(profile) : ""}
+      <div class="existing-profile-actions">
+        <button type="button" class="secondary" data-existing-action="edit" data-profile-id="${html(profile.id)}">
+          Modifier
+        </button>
+        <button type="button" class="danger" data-existing-action="delete" data-profile-id="${html(profile.id)}">
+          Supprimer
+        </button>
+      </div>
     `;
     els.npExistingProfileList.appendChild(item);
   }
@@ -928,6 +993,7 @@ async function loadExistingProfiles() {
 
   if (!url) {
     state.existingProfiles = [];
+    state.editingExistingProfileId = null;
     renderExistingProfiles();
     return;
   }
@@ -935,11 +1001,131 @@ async function loadExistingProfiles() {
   try {
     const response = await getJson(url);
     state.existingProfiles = response.data ?? [];
+    if (
+      state.editingExistingProfileId &&
+      !state.existingProfiles.some((profile) => profile.id === state.editingExistingProfileId)
+    ) {
+      state.editingExistingProfileId = null;
+    }
     renderExistingProfiles();
   } catch (error) {
     state.existingProfiles = [];
+    state.editingExistingProfileId = null;
     els.npExistingProfileCount.textContent = "Erreur";
     els.npExistingProfileList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  }
+}
+
+function buildExistingProfileUpdatePayload(profileId) {
+  const profile = findExistingProfile(profileId);
+  if (!profile) {
+    throw new Error("MIS ID introuvable dans la liste chargee.");
+  }
+
+  const visibility = els.npExistingProfileList.querySelector(
+    `[data-existing-visibility="${profileId}"]`
+  );
+
+  return {
+    visibilityMode: visibility?.value === "selectable" ? "selectable" : "hidden",
+    combinations: (profile.combinations ?? []).map((combination) => ({
+      id: combination.id,
+      tiers: (combination.tiers ?? []).map((tier) => {
+        const input = els.npExistingProfileList.querySelector(
+          `[data-existing-tier-id="${tier.id}"]`
+        );
+        const rawValue = input?.value?.trim() ?? "";
+        return {
+          id: tier.id,
+          negotiatedPrice: rawValue === "" ? null : Number(rawValue)
+        };
+      })
+    }))
+  };
+}
+
+async function saveExistingProfile(profileId) {
+  els.negotiatedStatus.textContent = "Enregistrement";
+  setBusyButtons(true);
+
+  try {
+    await getJson(`/negotiated-prices/profiles/${encodeURIComponent(profileId)}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(buildExistingProfileUpdatePayload(profileId))
+    });
+    state.editingExistingProfileId = null;
+    showDirectSaveMessage("MIS ID mis a jour.");
+    await loadExistingProfiles();
+    els.negotiatedStatus.textContent = "Enregistre";
+  } catch (error) {
+    els.negotiatedStatus.textContent = "Erreur";
+    showDirectSaveMessage(error.message, "error");
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+async function deleteExistingProfile(profileId) {
+  const profile = findExistingProfile(profileId);
+  if (!profile) {
+    showDirectSaveMessage("MIS ID introuvable dans la liste chargee.", "error");
+    return;
+  }
+
+  if (!window.confirm(`Supprimer le MIS ID ${profile.misId} ?`)) {
+    return;
+  }
+
+  els.negotiatedStatus.textContent = "Suppression";
+  setBusyButtons(true);
+
+  try {
+    await getJson(`/negotiated-prices/profiles/${encodeURIComponent(profileId)}`, {
+      method: "DELETE"
+    });
+    state.editingExistingProfileId = null;
+    showDirectSaveMessage(`MIS ID supprime: ${profile.misId}`);
+    await loadExistingProfiles();
+    els.negotiatedStatus.textContent = "Supprime";
+  } catch (error) {
+    els.negotiatedStatus.textContent = "Erreur";
+    showDirectSaveMessage(error.message, "error");
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+async function handleExistingProfileAction(event) {
+  const button = event.target.closest("[data-existing-action]");
+  if (!button) return;
+
+  const action = button.dataset.existingAction;
+  const profileId = button.dataset.profileId;
+
+  if (action === "cancel") {
+    state.editingExistingProfileId = null;
+    renderExistingProfiles();
+    return;
+  }
+
+  if (!profileId) return;
+
+  if (action === "edit") {
+    state.editingExistingProfileId = profileId;
+    renderExistingProfiles();
+    return;
+  }
+
+  if (action === "save") {
+    await saveExistingProfile(profileId);
+    return;
+  }
+
+  if (action === "delete") {
+    await deleteExistingProfile(profileId);
   }
 }
 
@@ -1454,6 +1640,7 @@ els.npPriceGroupSelect.addEventListener("change", () => {
   clearMultiCombinations();
   state.negotiatedOptions = [];
   state.existingProfiles = [];
+  state.editingExistingProfileId = null;
   renderPreview({ columns: [], quantities: [], combinationCount: 0 });
   renderExistingProfiles();
   refreshCompatibleNegotiatedOptions();
@@ -1470,6 +1657,7 @@ els.npPriceGroupSelect.addEventListener("change", () => {
     clearNegotiatedCompatibility();
     clearMultiCombinations();
     if (field === els.npClientId) {
+      state.editingExistingProfileId = null;
       loadExistingProfiles();
     }
   });
@@ -1477,6 +1665,7 @@ els.npPriceGroupSelect.addEventListener("change", () => {
     clearNegotiatedCompatibility();
     clearMultiCombinations();
     if (field === els.npClientId) {
+      state.editingExistingProfileId = null;
       loadExistingProfiles();
     }
   });
@@ -1491,6 +1680,7 @@ els.npDirectPreviewButton.addEventListener("click", previewDirectPrices);
 els.npDirectSaveButton.addEventListener("click", saveDirectPrices);
 els.npAddCombinationButton.addEventListener("click", addCurrentCombinationToMulti);
 els.npMultiSaveButton.addEventListener("click", saveMultiCombinations);
+els.npExistingProfileList.addEventListener("click", handleExistingProfileAction);
 els.viewLinks.forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();

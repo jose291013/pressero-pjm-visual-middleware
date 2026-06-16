@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  deleteNegotiatedPricesProfile,
   getNegotiatedPricesStatus,
   getNegotiatedPricesProfiles,
   postNegotiatedPricesCompatibleOptions,
@@ -8,13 +9,16 @@ import {
   postNegotiatedPricesExport,
   postNegotiatedPricesMultiSave,
   postNegotiatedPricesPreview,
-  postNegotiatedPricesValidateCombinations
+  postNegotiatedPricesValidateCombinations,
+  putNegotiatedPricesProfile
 } from "./negotiatedPrices.controller.js";
 
 export const negotiatedPricesRouter = Router();
 
 negotiatedPricesRouter.get("/", getNegotiatedPricesStatus);
 negotiatedPricesRouter.get("/profiles", getNegotiatedPricesProfiles);
+negotiatedPricesRouter.put("/profiles/:profileId", putNegotiatedPricesProfile);
+negotiatedPricesRouter.delete("/profiles/:profileId", deleteNegotiatedPricesProfile);
 negotiatedPricesRouter.post("/preview", postNegotiatedPricesPreview);
 negotiatedPricesRouter.post("/export", postNegotiatedPricesExport);
 negotiatedPricesRouter.post(

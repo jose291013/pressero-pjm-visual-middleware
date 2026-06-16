@@ -196,7 +196,9 @@ export type NegotiatedPriceExistingCombination = {
   optionSummary: string;
   tierCount: number;
   tiers: Array<{
+    id: string;
     tierValue: string;
+    pjmPrice: string | null;
     negotiatedPrice: string | null;
   }>;
 };
@@ -209,6 +211,21 @@ export type NegotiatedPriceExistingProfile = {
   combinationCount: number;
   tierCount: number;
   combinations: NegotiatedPriceExistingCombination[];
+};
+
+export type NegotiatedPriceExistingTierUpdateInput = {
+  id: string;
+  negotiatedPrice: number | null;
+};
+
+export type NegotiatedPriceExistingCombinationUpdateInput = {
+  id: string;
+  tiers: NegotiatedPriceExistingTierUpdateInput[];
+};
+
+export type NegotiatedPriceExistingProfileUpdateInput = {
+  visibilityMode?: NegotiatedPriceVisibilityMode;
+  combinations: NegotiatedPriceExistingCombinationUpdateInput[];
 };
 
 export type NegotiatedPriceExcelPlan = {

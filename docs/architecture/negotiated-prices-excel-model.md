@@ -221,6 +221,14 @@ The lookup helps administrators avoid duplicates while they are creating negotia
 
 This strengthens the allowlist model: every customer-facing route should come from one saved validated combination, and each saved validated combination should have one source negotiated reference in its context.
 
+## Sprint 25 Edit Delete Negotiated Profiles
+
+The allowlist can now be maintained after creation.
+
+Admins can edit negotiated tier prices and the customer visibility mode on an existing MIS ID without changing the validated PJM option selections. If the option selection itself is wrong, the safer workflow is to delete the active MIS ID and create a new validated combination through PJM's progressive compatibility flow.
+
+Deletion is soft. The profile is removed from active admin lists by setting `isActive = false`, while the historical profile, combinations and tiers remain in the database.
+
 ## PJM Price Reference
 
 The reference price is calculated with PJM `optionsandprice` using the selected `EnginePriceGroupIntegrationId` and the combination's selected engine values.

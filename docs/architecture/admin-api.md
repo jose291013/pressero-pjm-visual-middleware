@@ -308,3 +308,18 @@ GET /negotiated-prices/profiles?clientId=...&priceEngineId=...&enginePriceGroupI
 The response returns active MIS ID profiles, their profile mode, visibility mode, saved combinations and tier counts. The `Prix negocies` screen displays this list in the right panel and refreshes it after context changes and saves.
 
 Direct and multi-combination saves now reject a combination that already exists in the same organization, engine and price-group context. This keeps the admin from creating several MIS ID references for the exact same validated PJM combination.
+
+## Sprint 25 Edit Delete Negotiated Profiles
+
+Existing MIS ID profiles can now be maintained from the admin UI.
+
+New endpoints:
+
+```http
+PUT /negotiated-prices/profiles/:profileId
+DELETE /negotiated-prices/profiles/:profileId
+```
+
+`PUT` updates the profile visibility mode and the negotiated prices stored on existing tier rows. The PJM reference prices stay read-only.
+
+`DELETE` is a logical delete: the profile is marked inactive and its combinations are marked `deleted`. Inactive profiles are excluded from the existing MIS ID list and no longer block the administrator from creating a future replacement combination.

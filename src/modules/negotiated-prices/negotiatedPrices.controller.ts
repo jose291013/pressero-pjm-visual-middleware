@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import {
+  deleteExistingNegotiatedPriceProfile,
   exportNegotiatedPriceWorkbook,
   listExistingNegotiatedPriceProfiles,
   listCompatiblePjmOptions,
@@ -7,12 +8,14 @@ import {
   previewDirectNegotiatedPrices,
   saveDirectNegotiatedPrices,
   saveMultiNegotiatedPrices,
+  updateExistingNegotiatedPriceProfile,
   validateNegotiatedPriceCompatibility
 } from "./negotiatedPrices.service.js";
 import type {
   NegotiatedPriceCombinationInput,
   NegotiatedPriceCompatibleOptionsInput,
   NegotiatedPriceDirectSaveInput,
+  NegotiatedPriceExistingProfileUpdateInput,
   NegotiatedPriceExistingProfilesInput,
   NegotiatedPriceMultiSaveInput
 } from "./negotiatedPrices.types.js";
@@ -60,6 +63,22 @@ function readExistingProfilesInput(value: Request["query"]): NegotiatedPriceExis
   };
 }
 
+function readExistingProfileUpdateInput(value: unknown): NegotiatedPriceExistingProfileUpdateInput {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("Request body must be an object.");
+  }
+
+  return value as NegotiatedPriceExistingProfileUpdateInput;
+}
+
+function readRouteParam(value: string | string[] | undefined, name: string) {
+  if (typeof value !== "string") {
+    throw new Error(`${name} is required.`);
+  }
+
+  return value;
+}
+
 function readCompatibleOptionsInput(
   value: unknown
 ): NegotiatedPriceCompatibleOptionsInput {
@@ -86,6 +105,31 @@ export async function getNegotiatedPricesProfiles(req: Request, res: Response) {
       readExistingProfilesInput(req.query)
     );
     res.status(200).json({ data: profiles });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(400).json({ error: message });
+  }
+}
+
+export async function putNegotiatedPricesProfile(req: Request, res: Response) {
+  try {
+    const profile = await updateExistingNegotiatedPriceProfile(
+      readRouteParam(req.params.profileId, "profileId"),
+      readExistingProfileUpdateInput(req.body)
+    );
+    res.status(200).json({ data: profile });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(400).json({ error: message });
+  }
+}
+
+export async function deleteNegotiatedPricesProfile(req: Request, res: Response) {
+  try {
+    const result = await deleteExistingNegotiatedPriceProfile(
+      readRouteParam(req.params.profileId, "profileId")
+    );
+    res.status(200).json({ data: result });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     res.status(400).json({ error: message });
