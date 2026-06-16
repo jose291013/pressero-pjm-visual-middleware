@@ -532,12 +532,23 @@ tbody tr.is-selected {
   overflow: hidden;
 }
 
+.negotiated-preview-panel {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .negotiated-form,
 .option-picker,
 .preview-columns {
   min-height: 0;
   overflow: auto;
   padding: 14px;
+}
+
+.negotiated-preview-panel .preview-columns {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
 }
 
 .negotiated-form {
