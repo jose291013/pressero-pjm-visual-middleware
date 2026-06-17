@@ -157,10 +157,20 @@ export class PjmClient {
     );
   }
 
-  async listOrganizations(): Promise<PjmOrganizationListResponse> {
+  async listOrganizations(
+    payload: {
+      Take?: number;
+      Skip?: number;
+      Search?: string;
+    } = {}
+  ): Promise<PjmOrganizationListResponse> {
     return this.postJson<PjmOrganizationListResponse>(
-      "/public/Organizations/list",
-      {},
+      "/public/organizations/list",
+      {
+        Take: payload.Take ?? 100,
+        Skip: payload.Skip ?? 0,
+        Search: payload.Search ?? ""
+      },
       await this.authenticate()
     );
   }

@@ -48,16 +48,25 @@ assert.match(schema, /@@index\(\[name\]\)/);
 
 const contracts = await readText("src/modules/pjm-sync/pjmContracts.types.ts");
 assert.match(contracts, /PjmOrganizationListItemResponse/);
+assert.match(contracts, /ID\?:\s*string/);
 assert.match(contracts, /OrganizationIntegrationId/);
+assert.match(contracts, /IsDeleted/);
 assert.match(contracts, /PjmOrganizationListResponse/);
 
 const client = await readText("src/modules/pjm-sync/pjmClient.ts");
 assert.match(client, /listOrganizations/);
-assert.match(client, /\/public\/Organizations\/list/);
+assert.match(client, /\/public\/organizations\/list/);
+assert.match(client, /Take:\s*payload\.Take/);
+assert.match(client, /Skip:\s*payload\.Skip/);
+assert.match(client, /Search:\s*payload\.Search/);
 
 const catalog = await readText("src/modules/pjm-sync/pjmSyncCatalog.service.ts");
 assert.match(catalog, /normalizePjmOrganizationsResponse/);
+assert.match(catalog, /syncPjmOrganizations/);
+assert.match(catalog, /parseArrayString/);
 assert.match(catalog, /listOrganizations/);
+assert.match(catalog, /Take:\s*pageSize/);
+assert.match(catalog, /Skip:\s*skip/);
 assert.match(catalog, /pjmOrganization\.upsert/);
 assert.match(catalog, /organizationsProcessed/);
 
@@ -84,7 +93,7 @@ assert.match(js, /seenProfileIds/);
 
 const pjmDoc = await readText("docs/architecture/pjm-sync-model.md");
 assert.match(pjmDoc, /Sprint 29 PJM Organizations/);
-assert.match(pjmDoc, /Organizations\/list/);
+assert.match(pjmDoc, /organizations\/list/);
 
 const sprintDoc = await readText("docs/sprints/sprint-29-pjm-organizations.md");
 assert.match(sprintDoc, /organisations PJM/);

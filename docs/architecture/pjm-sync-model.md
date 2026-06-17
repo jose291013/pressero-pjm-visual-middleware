@@ -53,7 +53,8 @@ These endpoints consume the local Prisma tables only. They do not call PJM and d
 
 Sprint 29 PJM Organizations adds PJM organizations as synchronized catalog data:
 
-- the sync client calls `POST /public/Organizations/list`;
+- the sync client calls the paginated `POST /public/organizations/list` endpoint with `Take`, `Skip` and `Search`;
 - organizations are normalized into `PjmOrganization`;
+- deleted organizations are stored as inactive and hidden from admin selectors;
 - admin organization lists now read from synchronized PJM organizations;
 - `Prix negocies` and `Produits Pressero` show the organization name and keep the PJM organization ID read-only.

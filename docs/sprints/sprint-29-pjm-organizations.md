@@ -7,7 +7,7 @@ Utiliser PJM comme source officielle des organisations PJM disponibles et ne plu
 ## Changements
 
 - ajout du modele Prisma `PjmOrganization`;
-- ajout de l'appel PJM `POST /public/Organizations/list`;
+- ajout de l'appel PJM pagine `POST /public/organizations/list` avec `Take`, `Skip` et `Search`;
 - synchronisation des organisations pendant la synchronisation globale PJM;
 - lecture admin des organisations depuis la table PJM synchronisee;
 - champ Organisation recherchable dans `Prix negocies`;
@@ -38,4 +38,4 @@ Le test verifie le modele local, l'appel PJM, la synchro des organisations, les 
 
 ## Resultat attendu
 
-Apres une synchronisation PJM globale, les ecrans `Prix negocies` et `Produits Pressero` permettent de rechercher une organisation par nom. L'ID PJM correspondant est rempli automatiquement et reste en lecture seule.
+Apres une synchronisation PJM globale, les ecrans `Prix negocies` et `Produits Pressero` permettent de rechercher une organisation par nom. L'ID PJM correspondant est rempli automatiquement et reste en lecture seule. Les organisations marquees supprimees par PJM ne sont pas proposees dans l'admin.

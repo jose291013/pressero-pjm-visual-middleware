@@ -107,6 +107,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function parseArrayString(value: unknown): unknown[] | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function readBoolean(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+
+  return null;
+}
+
 function findProductEngineArray(
   value: unknown,
   depth = 0
@@ -140,6 +162,11 @@ function findOrganizationArray(
     const candidate = value[key];
     if (Array.isArray(candidate)) {
       return candidate as PjmOrganizationListItemResponse[];
+    }
+
+    const parsed = parseArrayString(candidate);
+    if (parsed) {
+      return parsed as PjmOrganizationListItemResponse[];
     }
   }
 
@@ -178,8 +205,10 @@ export function normalizePjmOrganizationsResponse(
 
   return organizations.flatMap((organization) => {
     const pjmId = firstStringValue(
+      organization.ID,
       organization.OrganizationIntegrationId,
       organization.organizationIntegrationId,
+      organization.IntegrationID,
       organization.IntegrationId,
       organization.integrationId,
       organization.Id,
@@ -187,6 +216,12 @@ export function normalizePjmOrganizationsResponse(
     );
 
     if (!pjmId) return [];
+
+    const isDeleted =
+      readBoolean(organization.IsDeleted ?? organization.isDeleted) ?? false;
+    const isActive =
+      !isDeleted &&
+      (readBoolean(organization.IsActive ?? organization.isActive) ?? true);
 
     return [
       {
@@ -201,10 +236,67 @@ export function normalizePjmOrganizationsResponse(
             organization.title,
             pjmId
           ) ?? pjmId,
-        isActive: organization.IsActive ?? organization.isActive ?? true
+        isActive
       }
     ];
   });
+}
+
+function readPjmTotal(response: PjmOrganizationListResponse): number | null {
+  if (Array.isArray(response)) return response.length;
+  const rawTotal = response.Total ?? response.total;
+  const total = Number(rawTotal);
+  return Number.isFinite(total) ? total : null;
+}
+
+export async function syncPjmOrganizations(
+  client: PjmCatalogSyncClient
+): Promise<{ organizationsProcessed: number; warnings: string[] }> {
+  const pageSize = 100;
+  let skip = 0;
+  let organizationsProcessed = 0;
+  const warnings: string[] = [];
+
+  try {
+    while (true) {
+      const response = await client.listOrganizations({
+        Take: pageSize,
+        Skip: skip,
+        Search: ""
+      });
+      const organizations = normalizePjmOrganizationsResponse(response);
+
+      for (const organization of organizations) {
+        await prisma.pjmOrganization.upsert({
+          where: { pjmId: organization.pjmId },
+          update: {
+            name: organization.name,
+            isActive: organization.isActive
+          },
+          create: {
+            pjmId: organization.pjmId,
+            name: organization.name,
+            isActive: organization.isActive
+          }
+        });
+        organizationsProcessed += 1;
+      }
+
+      const total = readPjmTotal(response);
+      skip += organizations.length;
+
+      if (!organizations.length || organizations.length < pageSize) break;
+      if (total !== null && skip >= total) break;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    warnings.push(`Unable to sync PJM organizations: ${message}`);
+  }
+
+  return {
+    organizationsProcessed,
+    warnings
+  };
 }
 
 function readEngineOptions(
@@ -345,30 +437,9 @@ export async function syncPjmCatalog(
     warnings: []
   };
 
-  try {
-    const organizations = normalizePjmOrganizationsResponse(
-      await client.listOrganizations()
-    );
-
-    for (const organization of organizations) {
-      await prisma.pjmOrganization.upsert({
-        where: { pjmId: organization.pjmId },
-        update: {
-          name: organization.name,
-          isActive: organization.isActive
-        },
-        create: {
-          pjmId: organization.pjmId,
-          name: organization.name,
-          isActive: organization.isActive
-        }
-      });
-      result.organizationsProcessed += 1;
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    result.warnings.push(`Unable to sync PJM organizations: ${message}`);
-  }
+  const organizationResult = await syncPjmOrganizations(client);
+  result.organizationsProcessed = organizationResult.organizationsProcessed;
+  result.warnings.push(...organizationResult.warnings);
 
   const engines = readPjmProductEnginesResponse(
     await client.listProductEngines()

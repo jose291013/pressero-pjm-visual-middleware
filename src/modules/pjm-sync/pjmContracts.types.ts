@@ -42,10 +42,12 @@ export type PjmProductEngineListResponse =
   | PjmProductEngineListEnvelopeResponse;
 
 export type PjmOrganizationListItemResponse = {
+  ID?: string;
   Id?: string;
   id?: string;
   OrganizationIntegrationId?: string;
   organizationIntegrationId?: string;
+  IntegrationID?: string;
   IntegrationId?: string;
   integrationId?: string;
   Name?: string;
@@ -56,9 +58,13 @@ export type PjmOrganizationListItemResponse = {
   title?: string;
   IsActive?: boolean;
   isActive?: boolean;
+  IsDeleted?: boolean | string;
+  isDeleted?: boolean | string;
 };
 
 export type PjmOrganizationListEnvelopeResponse = {
+  Total?: number;
+  total?: number;
   Organizations?: PjmOrganizationListItemResponse[];
   organizations?: PjmOrganizationListItemResponse[];
   Items?: PjmOrganizationListItemResponse[];
