@@ -37,3 +37,9 @@ Negotiated pricing MISID -> internal negotiated tier profile
 ```
 
 Pressero pairs `Pricing Engine price 1` with `MIS Product ID price 1`. The pricing engine points to the middleware URL; the MIS Product ID tells the middleware which product configuration to resolve.
+
+## Sprint 28 Pressero Organization Search
+
+The `Produits Pressero` admin form now uses the visible organization name as the editable field. The organization integration ID is derived from that selection and kept read-only.
+
+Negotiated pricing profile choices are loaded for the selected organization, PJM engine and price group. Concurrent reloads are ignored when stale, and duplicate profiles are removed before rendering.

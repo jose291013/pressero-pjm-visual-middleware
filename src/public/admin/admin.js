@@ -10,7 +10,8 @@ const state = {
   editingExistingProfileId: null,
   multiCombinations: [],
   presseroConfigs: [],
-  presseroNegotiatedProfiles: []
+  presseroNegotiatedProfiles: [],
+  presseroNegotiatedProfilesRequestId: 0
 };
 
 const els = {
@@ -79,6 +80,7 @@ const els = {
   pcName: document.getElementById("pcName"),
   pcOrganizationId: document.getElementById("pcOrganizationId"),
   pcOrganizationName: document.getElementById("pcOrganizationName"),
+  pcOrganizationChoices: document.getElementById("pcOrganizationChoices"),
   pcEngineSelect: document.getElementById("pcEngineSelect"),
   pcPriceGroupSelect: document.getElementById("pcPriceGroupSelect"),
   pcPricingMode: document.getElementById("pcPricingMode"),
@@ -250,6 +252,7 @@ function renderFilters() {
   renderSelectOptions(els.priceGroupFilter, uniqueOptions(priceGroups), "Tous");
   renderNegotiatedEngineSelect();
   renderPresseroEngineSelect();
+  renderPresseroOrganizationChoices();
 }
 
 function renderNegotiatedEngineSelect() {
@@ -266,6 +269,46 @@ function renderPresseroEngineSelect() {
     label: engine.name
   }));
   renderSelectOptions(els.pcEngineSelect, options, "Choisir un moteur");
+}
+
+function presseroOrganizationLabel(organization) {
+  return organization.name || organization.clientId;
+}
+
+function renderPresseroOrganizationChoices() {
+  els.pcOrganizationChoices.innerHTML = "";
+
+  for (const organization of state.organizations) {
+    const item = document.createElement("option");
+    item.value = presseroOrganizationLabel(organization);
+    item.label = organization.clientId;
+    els.pcOrganizationChoices.appendChild(item);
+  }
+}
+
+function findPresseroOrganization(value) {
+  const normalizedValue = text(value, "").trim().toLowerCase();
+  if (!normalizedValue) return null;
+
+  return state.organizations.find((organization) => {
+    return (
+      organization.clientId.toLowerCase() === normalizedValue ||
+      presseroOrganizationLabel(organization).toLowerCase() === normalizedValue
+    );
+  }) || null;
+}
+
+function syncPresseroOrganizationFromName() {
+  const organization = findPresseroOrganization(els.pcOrganizationName.value);
+
+  if (!organization) {
+    els.pcOrganizationId.value = "";
+    return false;
+  }
+
+  els.pcOrganizationName.value = presseroOrganizationLabel(organization);
+  els.pcOrganizationId.value = organization.clientId;
+  return true;
 }
 
 function findEngine(engineId) {
@@ -1626,6 +1669,7 @@ function resetPresseroConfigForm() {
   els.pcNegotiatedProfileSelect.innerHTML = '<option value="">Aucune grille negociee</option>';
   els.pcNotes.value = "";
   state.presseroNegotiatedProfiles = [];
+  state.presseroNegotiatedProfilesRequestId += 1;
   els.pcStatus.textContent = "Pret";
 }
 
@@ -1687,6 +1731,8 @@ function currentPresseroContextUrl() {
 }
 
 async function loadPresseroNegotiatedProfiles(selectedProfileId = "") {
+  const requestId = state.presseroNegotiatedProfilesRequestId + 1;
+  state.presseroNegotiatedProfilesRequestId = requestId;
   els.pcNegotiatedProfileSelect.innerHTML = '<option value="">Aucune grille negociee</option>';
   state.presseroNegotiatedProfiles = [];
 
@@ -1701,7 +1747,17 @@ async function loadPresseroNegotiatedProfiles(selectedProfileId = "") {
 
   try {
     const response = await getJson(url);
-    state.presseroNegotiatedProfiles = response.data ?? [];
+    if (requestId !== state.presseroNegotiatedProfilesRequestId) {
+      return;
+    }
+
+    const seenProfileIds = new Set();
+    state.presseroNegotiatedProfiles = (response.data ?? []).filter((profile) => {
+      if (seenProfileIds.has(profile.id)) return false;
+      seenProfileIds.add(profile.id);
+      return true;
+    });
+
     for (const profile of state.presseroNegotiatedProfiles) {
       const item = document.createElement("option");
       item.value = profile.id;
@@ -1718,12 +1774,17 @@ async function loadPresseroNegotiatedProfiles(selectedProfileId = "") {
       els.pcNegotiatedProfileSelect.value = selectedProfileId;
     }
   } catch (error) {
+    if (requestId !== state.presseroNegotiatedProfilesRequestId) {
+      return;
+    }
+
     els.pcNegotiatedProfileSelect.innerHTML =
       `<option value="">Erreur: ${html(error.message)}</option>`;
   }
 }
 
 function buildPresseroConfigPayload() {
+  syncPresseroOrganizationFromName();
   const selectedPriceGroup = els.pcPriceGroupSelect.selectedOptions[0];
   return {
     misProductId: els.pcMisProductId.value.trim(),
@@ -1780,7 +1841,12 @@ async function editPresseroConfig(configId) {
   els.pcMisProductId.value = config.misProductId;
   els.pcName.value = config.name;
   els.pcOrganizationId.value = config.organizationIntegrationId;
-  els.pcOrganizationName.value = config.organizationName ?? "";
+  els.pcOrganizationName.value =
+    config.organizationName ||
+    presseroOrganizationLabel(findPresseroOrganization(config.organizationIntegrationId) || {
+      clientId: config.organizationIntegrationId,
+      name: config.organizationIntegrationId
+    });
   els.pcEngineSelect.value = config.priceEngineId;
   renderPriceGroupSelect(els.pcPriceGroupSelect, findEngine(config.priceEngineId));
   els.pcPriceGroupSelect.value = config.enginePriceGroupIntegrationId;
@@ -1979,12 +2045,22 @@ els.pcEngineSelect.addEventListener("change", () => {
   loadPresseroNegotiatedProfiles();
 });
 [
-  els.pcOrganizationId,
+  els.pcOrganizationName,
   els.pcPriceGroupSelect,
   els.pcPricingMode
 ].forEach((field) => {
-  field.addEventListener("input", () => loadPresseroNegotiatedProfiles());
-  field.addEventListener("change", () => loadPresseroNegotiatedProfiles());
+  field.addEventListener("input", () => {
+    if (field === els.pcOrganizationName) {
+      syncPresseroOrganizationFromName();
+    }
+    loadPresseroNegotiatedProfiles();
+  });
+  field.addEventListener("change", () => {
+    if (field === els.pcOrganizationName) {
+      syncPresseroOrganizationFromName();
+    }
+    loadPresseroNegotiatedProfiles();
+  });
 });
 els.viewLinks.forEach((link) => {
   link.addEventListener("click", (event) => {

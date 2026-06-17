@@ -35,6 +35,7 @@
     "test:sprint25": "node scripts/test-sprint-25-edit-delete-negotiated-profiles.mjs",
     "test:sprint26": "node scripts/test-sprint-26-pressero-product-configs.mjs",
     "test:sprint27": "node scripts/test-sprint-27-generated-mis-product-id.mjs",
+    "test:sprint28": "node scripts/test-sprint-28-pressero-org-search-dedupe.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

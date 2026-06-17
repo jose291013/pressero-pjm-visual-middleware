@@ -389,12 +389,13 @@
                   <input id="pcName" type="text" placeholder="Nom lisible">
                 </label>
                 <label>
-                  <span>Organisation ID</span>
-                  <input id="pcOrganizationId" type="text" placeholder="organizationIntegrationId">
+                  <span>Organisation</span>
+                  <input id="pcOrganizationName" type="text" list="pcOrganizationChoices" placeholder="Rechercher une organisation">
+                  <datalist id="pcOrganizationChoices"></datalist>
                 </label>
                 <label>
-                  <span>Organisation</span>
-                  <input id="pcOrganizationName" type="text" placeholder="Nom lisible">
+                  <span>Organisation ID</span>
+                  <input id="pcOrganizationId" type="text" placeholder="organizationIntegrationId" readonly>
                 </label>
                 <label>
                   <span>Moteur PJM</span>
