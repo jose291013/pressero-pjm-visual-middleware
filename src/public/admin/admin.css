@@ -1012,6 +1012,12 @@ tbody tr.is-selected {
   height: 36px;
 }
 
+.pressero-config-form input[readonly] {
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+}
+
 .pressero-config-form textarea {
   resize: vertical;
   min-height: 88px;

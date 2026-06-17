@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import type {
@@ -35,6 +36,7 @@ function serializeProductConfig(
     priceGroupName: config.priceGroupName,
     negotiatedProfileId: config.negotiatedProfileId,
     negotiatedMisId: config.negotiatedProfile?.misId ?? null,
+    negotiatedPricingMisId: config.negotiatedProfile?.misId ?? null,
     notes: config.notes,
     isActive: config.isActive,
     updatedAt: config.updatedAt.toISOString()
@@ -43,6 +45,47 @@ function serializeProductConfig(
 
 function readPricingMode(value: string): PresseroPricingMode {
   return value === "negotiated" ? "negotiated" : "pjmLive";
+}
+
+function normalizeIdentifierPart(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toUpperCase()
+    .slice(0, 18);
+}
+
+async function generateMiddlewareProductMisId(
+  input: ReturnType<typeof normalizeInput>
+) {
+  const organizationPart = normalizeIdentifierPart(input.organizationIntegrationId).slice(0, 8);
+  const engine = await prisma.pjmPriceEngine.findUnique({
+    where: {
+      id: input.priceEngineId
+    },
+    select: {
+      name: true
+    }
+  });
+  const enginePart = normalizeIdentifierPart(engine?.name || input.priceEngineId) || "PJM";
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const suffix = randomBytes(3).toString("hex").toUpperCase();
+    const candidate = `MWP-${organizationPart || "ORG"}-${enginePart}-${suffix}`;
+    const existing = await prisma.presseroProductConfig.findUnique({
+      where: {
+        misProductId: candidate
+      }
+    });
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  throw new Error("Impossible de generer un MIS Product ID unique.");
 }
 
 function normalizeInput(input: PresseroProductConfigInput) {
@@ -65,10 +108,6 @@ function normalizeInput(input: PresseroProductConfigInput) {
 async function assertProductConfigContext(
   input: ReturnType<typeof normalizeInput>
 ) {
-  if (!input.misProductId) {
-    throw new Error("MIS Product ID obligatoire.");
-  }
-
   if (!input.name) {
     throw new Error("Nom de configuration obligatoire.");
   }
@@ -156,10 +195,13 @@ export async function createPresseroProductConfig(
 ): Promise<PresseroProductConfigSummary> {
   const normalized = normalizeInput(input);
   const context = await assertProductConfigContext(normalized);
+  const misProductId =
+    normalized.misProductId || await generateMiddlewareProductMisId(normalized);
 
   const config = await prisma.presseroProductConfig.create({
     data: {
       ...normalized,
+      misProductId,
       priceGroupName: context.priceGroupName
     },
     include: productConfigInclude
@@ -193,6 +235,7 @@ export async function updatePresseroProductConfig(
     },
     data: {
       ...normalized,
+      misProductId: normalized.misProductId || existing.misProductId,
       priceGroupName: context.priceGroupName
     },
     include: productConfigInclude

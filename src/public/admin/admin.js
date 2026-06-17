@@ -1623,7 +1623,7 @@ function resetPresseroConfigForm() {
   els.pcEngineSelect.value = "";
   els.pcPriceGroupSelect.innerHTML = '<option value="">Choisir un groupe</option>';
   els.pcPricingMode.value = "pjmLive";
-  els.pcNegotiatedProfileSelect.innerHTML = '<option value="">Aucun MISID</option>';
+  els.pcNegotiatedProfileSelect.innerHTML = '<option value="">Aucune grille negociee</option>';
   els.pcNotes.value = "";
   state.presseroNegotiatedProfiles = [];
   els.pcStatus.textContent = "Pret";
@@ -1646,9 +1646,10 @@ function renderPresseroConfigs() {
         <strong>${html(config.misProductId)}</strong>
         <span>${html(config.name)} | ${html(config.pricingMode === "negotiated" ? "Prix negocie" : "PJM standard")}</span>
         <small>${html(config.organizationIntegrationId)} | ${html(config.priceEngineName)} | ${html(config.priceGroupName)}</small>
-        ${config.negotiatedMisId ? `<small>MISID negocie: ${html(config.negotiatedMisId)}</small>` : ""}
+        ${config.negotiatedPricingMisId ? `<small>Grille negociee interne: ${html(config.negotiatedPricingMisId)}</small>` : ""}
       </div>
       <div class="pressero-config-actions">
+        <button type="button" class="secondary" data-pc-action="copy" data-config-id="${html(config.id)}">Copier</button>
         <button type="button" class="secondary" data-pc-action="edit" data-config-id="${html(config.id)}">Modifier</button>
         <button type="button" class="danger" data-pc-action="delete" data-config-id="${html(config.id)}">Supprimer</button>
       </div>
@@ -1686,7 +1687,7 @@ function currentPresseroContextUrl() {
 }
 
 async function loadPresseroNegotiatedProfiles(selectedProfileId = "") {
-  els.pcNegotiatedProfileSelect.innerHTML = '<option value="">Aucun MISID</option>';
+  els.pcNegotiatedProfileSelect.innerHTML = '<option value="">Aucune grille negociee</option>';
   state.presseroNegotiatedProfiles = [];
 
   if (els.pcPricingMode.value !== "negotiated") {
@@ -1760,6 +1761,7 @@ async function savePresseroConfig(event) {
     );
 
     els.pcConfigId.value = response.data?.id ?? "";
+    els.pcMisProductId.value = response.data?.misProductId ?? "";
     els.pcStatus.textContent = "Enregistre";
     await loadPresseroProductConfigs();
   } catch (error) {
@@ -1816,6 +1818,18 @@ async function deletePresseroConfig(configId) {
   }
 }
 
+async function copyPresseroMisProductId(configId) {
+  const config = state.presseroConfigs.find((item) => item.id === configId);
+  if (!config) return;
+
+  try {
+    await navigator.clipboard.writeText(config.misProductId);
+    els.pcStatus.textContent = "Copie";
+  } catch (_error) {
+    els.pcStatus.textContent = config.misProductId;
+  }
+}
+
 async function handlePresseroConfigAction(event) {
   const button = event.target.closest("[data-pc-action]");
   if (!button) return;
@@ -1825,6 +1839,11 @@ async function handlePresseroConfigAction(event) {
 
   if (button.dataset.pcAction === "edit") {
     await editPresseroConfig(configId);
+    return;
+  }
+
+  if (button.dataset.pcAction === "copy") {
+    await copyPresseroMisProductId(configId);
     return;
   }
 

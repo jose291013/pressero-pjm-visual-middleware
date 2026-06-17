@@ -1,7 +1,7 @@
 export type PresseroPricingMode = "pjmLive" | "negotiated";
 
 export type PresseroProductConfigInput = {
-  misProductId: string;
+  misProductId?: string;
   name: string;
   pricingMode: PresseroPricingMode;
   organizationIntegrationId: string;
@@ -26,6 +26,7 @@ export type PresseroProductConfigSummary = {
   priceGroupName: string | null;
   negotiatedProfileId: string | null;
   negotiatedMisId: string | null;
+  negotiatedPricingMisId: string | null;
   notes: string | null;
   isActive: boolean;
   updatedAt: string;

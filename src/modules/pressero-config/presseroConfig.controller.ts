@@ -11,8 +11,8 @@ import type { PresseroProductConfigInput } from "./presseroConfig.types.js";
 export function getPresseroConfigStatus(_req: Request, res: Response) {
   res.status(200).json({
     module: getPresseroConfigModuleName(),
-    status: "product_config_foundation",
-    sprint: 26
+    status: "middleware_generated_product_misid",
+    sprint: 27
   });
 }
 

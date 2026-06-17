@@ -78,7 +78,7 @@ assert.match(routes, /:configId/);
 
 const html = await readText("src/public/admin/index.html");
 assert.match(html, /Produits Pressero/);
-assert.match(html, /MIS Product ID Pressero/);
+assert.match(html, /MIS Product ID price 1/);
 assert.match(html, /id="pcPricingMode"/);
 assert.match(html, /id="pcNegotiatedProfileSelect"/);
 

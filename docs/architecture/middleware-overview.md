@@ -24,3 +24,16 @@ The saved configuration decides whether the product uses:
 - `negotiated`: a negotiated MISID profile.
 
 Both modes share the future image library and option mapping layer. The difference is only the pricing source.
+
+## Sprint 27 Generated MIS Product ID
+
+The Pressero column `MIS Product ID price 1` stores a middleware-generated product reference. It exists for both standard PJM pricing and negotiated pricing.
+
+This value is different from an internal negotiated pricing profile reference:
+
+```text
+MIS Product ID price 1 -> middleware product config
+Negotiated pricing MISID -> internal negotiated tier profile
+```
+
+Pressero pairs `Pricing Engine price 1` with `MIS Product ID price 1`. The pricing engine points to the middleware URL; the MIS Product ID tells the middleware which product configuration to resolve.
