@@ -4,6 +4,8 @@ import type {
   PjmEngineChoiceResponse,
   PjmEngineOptionResponse,
   PjmEngineOptionsResponse,
+  PjmOrganizationListItemResponse,
+  PjmOrganizationListResponse,
   PjmProductEngineListItemResponse,
   PjmProductEngineListResponse
 } from "./pjmContracts.types.js";
@@ -42,10 +44,29 @@ const PRODUCT_ENGINE_ARRAY_KEYS = [
   "results"
 ];
 
+const ORGANIZATION_ARRAY_KEYS = [
+  "Organizations",
+  "organizations",
+  "Items",
+  "items",
+  "Data",
+  "data",
+  "Result",
+  "result",
+  "Results",
+  "results"
+];
+
 export type PjmCatalogSyncClient = Pick<
   PjmClient,
-  "listProductEngines" | "getEngineOptions"
+  "listProductEngines" | "listOrganizations" | "getEngineOptions"
 >;
+
+type NormalizedPjmOrganization = {
+  pjmId: string;
+  name: string;
+  isActive: boolean;
+};
 
 function normalizeText(value: string): string {
   return value
@@ -108,6 +129,28 @@ function findProductEngineArray(
   return null;
 }
 
+function findOrganizationArray(
+  value: unknown,
+  depth = 0
+): PjmOrganizationListItemResponse[] | null {
+  if (Array.isArray(value)) return value as PjmOrganizationListItemResponse[];
+  if (!isRecord(value) || depth > 4) return null;
+
+  for (const key of ORGANIZATION_ARRAY_KEYS) {
+    const candidate = value[key];
+    if (Array.isArray(candidate)) {
+      return candidate as PjmOrganizationListItemResponse[];
+    }
+  }
+
+  for (const key of ORGANIZATION_ARRAY_KEYS) {
+    const nested = findOrganizationArray(value[key], depth + 1);
+    if (nested !== null) return nested;
+  }
+
+  return null;
+}
+
 export function readPjmProductEnginesResponse(
   response: PjmProductEngineListResponse
 ): PjmProductEngineListItemResponse[] {
@@ -120,6 +163,48 @@ export function readPjmProductEnginesResponse(
   }
 
   return engines;
+}
+
+export function normalizePjmOrganizationsResponse(
+  response: PjmOrganizationListResponse
+): NormalizedPjmOrganization[] {
+  const organizations = findOrganizationArray(response);
+
+  if (organizations === null) {
+    throw new Error(
+      "PJM Organizations/list response did not include an organization array."
+    );
+  }
+
+  return organizations.flatMap((organization) => {
+    const pjmId = firstStringValue(
+      organization.OrganizationIntegrationId,
+      organization.organizationIntegrationId,
+      organization.IntegrationId,
+      organization.integrationId,
+      organization.Id,
+      organization.id
+    );
+
+    if (!pjmId) return [];
+
+    return [
+      {
+        pjmId,
+        name:
+          firstStringValue(
+            organization.Name,
+            organization.name,
+            organization.DisplayName,
+            organization.displayName,
+            organization.Title,
+            organization.title,
+            pjmId
+          ) ?? pjmId,
+        isActive: organization.IsActive ?? organization.isActive ?? true
+      }
+    ];
+  });
 }
 
 function readEngineOptions(
@@ -251,6 +336,7 @@ export async function syncPjmCatalog(
   client: PjmCatalogSyncClient
 ): Promise<PjmCatalogSyncResult> {
   const result: PjmCatalogSyncResult = {
+    organizationsProcessed: 0,
     enginesProcessed: 0,
     priceGroupsProcessed: 0,
     mappingsProcessed: 0,
@@ -258,6 +344,31 @@ export async function syncPjmCatalog(
     choicesProcessed: 0,
     warnings: []
   };
+
+  try {
+    const organizations = normalizePjmOrganizationsResponse(
+      await client.listOrganizations()
+    );
+
+    for (const organization of organizations) {
+      await prisma.pjmOrganization.upsert({
+        where: { pjmId: organization.pjmId },
+        update: {
+          name: organization.name,
+          isActive: organization.isActive
+        },
+        create: {
+          pjmId: organization.pjmId,
+          name: organization.name,
+          isActive: organization.isActive
+        }
+      });
+      result.organizationsProcessed += 1;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    result.warnings.push(`Unable to sync PJM organizations: ${message}`);
+  }
 
   const engines = readPjmProductEnginesResponse(
     await client.listProductEngines()

@@ -92,39 +92,22 @@ export async function listPjmSyncAdminPriceEngines() {
 }
 
 export async function listPjmSyncAdminOrganizations() {
-  const profiles = await prisma.negotiatedPriceProfile.findMany({
-    select: {
-      clientId: true,
-      name: true,
-      priceEngineId: true
+  const syncedOrganizations = await prisma.pjmOrganization.findMany({
+    where: {
+      isActive: true
     },
-    orderBy: [{ clientId: "asc" }, { name: "asc" }]
+    orderBy: [{ name: "asc" }, { pjmId: "asc" }]
   });
 
-  const organizations = new Map<
-    string,
-    { clientId: string; name: string; priceEngineIds: Set<string> }
-  >();
-
-  for (const profile of profiles) {
-    const existing = organizations.get(profile.clientId) ?? {
-      clientId: profile.clientId,
-      name: profile.name,
-      priceEngineIds: new Set<string>()
-    };
-
-    if (profile.priceEngineId) {
-      existing.priceEngineIds.add(profile.priceEngineId);
-    }
-
-    organizations.set(profile.clientId, existing);
+  if (syncedOrganizations.length) {
+    return syncedOrganizations.map((organization) => ({
+      clientId: organization.pjmId,
+      name: organization.name,
+      priceEngineIds: []
+    }));
   }
 
-  return Array.from(organizations.values()).map((organization) => ({
-    clientId: organization.clientId,
-    name: organization.name,
-    priceEngineIds: Array.from(organization.priceEngineIds)
-  }));
+  return [];
 }
 
 export async function getPjmSyncAdminPriceEngine(engineIdOrPjmId: string) {

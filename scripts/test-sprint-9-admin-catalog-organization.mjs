@@ -45,8 +45,8 @@ assert.match(syncTypes, /productCategories:\s*number/);
 const adminService = await readText("src/modules/pjm-sync/pjmSyncAdmin.service.ts");
 assert.match(adminService, /prisma\.pjmProductCategory\.count\(\)/);
 assert.match(adminService, /listPjmSyncAdminOrganizations/);
-assert.match(adminService, /prisma\.negotiatedPriceProfile\.findMany/);
-assert.match(adminService, /priceEngineIds:\s*Array\.from/);
+assert.match(adminService, /prisma\.pjmOrganization\.findMany/);
+assert.match(adminService, /clientId:\s*organization\.pjmId/);
 
 const controller = await readText("src/modules/pjm-sync/pjmSync.controller.ts");
 assert.match(controller, /getPjmSyncAdminOrganizations/);

@@ -41,6 +41,40 @@ export type PjmProductEngineListResponse =
   | PjmProductEngineListItemResponse[]
   | PjmProductEngineListEnvelopeResponse;
 
+export type PjmOrganizationListItemResponse = {
+  Id?: string;
+  id?: string;
+  OrganizationIntegrationId?: string;
+  organizationIntegrationId?: string;
+  IntegrationId?: string;
+  integrationId?: string;
+  Name?: string;
+  name?: string;
+  DisplayName?: string;
+  displayName?: string;
+  Title?: string;
+  title?: string;
+  IsActive?: boolean;
+  isActive?: boolean;
+};
+
+export type PjmOrganizationListEnvelopeResponse = {
+  Organizations?: PjmOrganizationListItemResponse[];
+  organizations?: PjmOrganizationListItemResponse[];
+  Items?: PjmOrganizationListItemResponse[];
+  items?: PjmOrganizationListItemResponse[];
+  Data?: PjmOrganizationListItemResponse[] | PjmOrganizationListEnvelopeResponse;
+  data?: PjmOrganizationListItemResponse[] | PjmOrganizationListEnvelopeResponse;
+  Result?: PjmOrganizationListItemResponse[] | PjmOrganizationListEnvelopeResponse;
+  result?: PjmOrganizationListItemResponse[] | PjmOrganizationListEnvelopeResponse;
+  Results?: PjmOrganizationListItemResponse[] | PjmOrganizationListEnvelopeResponse;
+  results?: PjmOrganizationListItemResponse[] | PjmOrganizationListEnvelopeResponse;
+};
+
+export type PjmOrganizationListResponse =
+  | PjmOrganizationListItemResponse[]
+  | PjmOrganizationListEnvelopeResponse;
+
 export type PjmEngineOperation = "options" | "optionsandprice";
 
 export type PjmEngineOptionValue = {

@@ -45,6 +45,18 @@ model PjmPriceGroup {
   updatedAt      DateTime                     @updatedAt
 }
 
+model PjmOrganization {
+  id        String   @id @default(cuid())
+  pjmId     String   @unique
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([isActive])
+}
+
 model PjmPriceEngine {
   id                 String                       @id @default(cuid())
   pjmId              String                       @unique

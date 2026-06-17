@@ -6,6 +6,7 @@ import type {
   PjmEngineOptionValue,
   PjmEngineOptionsResponse,
   PjmEngineRequest,
+  PjmOrganizationListResponse,
   PjmOptionsAndPriceResponse,
   PjmProductEngineListResponse
 } from "./pjmContracts.types.js";
@@ -151,6 +152,14 @@ export class PjmClient {
   async listProductEngines(): Promise<PjmProductEngineListResponse> {
     return this.postJson<PjmProductEngineListResponse>(
       "/public/productEngines/list",
+      {},
+      await this.authenticate()
+    );
+  }
+
+  async listOrganizations(): Promise<PjmOrganizationListResponse> {
+    return this.postJson<PjmOrganizationListResponse>(
+      "/public/Organizations/list",
       {},
       await this.authenticate()
     );

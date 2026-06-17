@@ -46,6 +46,7 @@ export type PjmSyncMockDataset = {
 };
 
 export type PjmCatalogSyncResult = {
+  organizationsProcessed: number;
   enginesProcessed: number;
   priceGroupsProcessed: number;
   mappingsProcessed: number;

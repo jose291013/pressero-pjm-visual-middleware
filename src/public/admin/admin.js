@@ -40,6 +40,7 @@ const els = {
   negotiatedStatus: document.getElementById("negotiatedStatus"),
   npClientId: document.getElementById("npClientId"),
   npOrganizationName: document.getElementById("npOrganizationName"),
+  npOrganizationChoices: document.getElementById("npOrganizationChoices"),
   npEngineSelect: document.getElementById("npEngineSelect"),
   npPriceGroupSelect: document.getElementById("npPriceGroupSelect"),
   npProfileMode: document.getElementById("npProfileMode"),
@@ -252,6 +253,7 @@ function renderFilters() {
   renderSelectOptions(els.priceGroupFilter, uniqueOptions(priceGroups), "Tous");
   renderNegotiatedEngineSelect();
   renderPresseroEngineSelect();
+  renderNegotiatedOrganizationChoices();
   renderPresseroOrganizationChoices();
 }
 
@@ -271,44 +273,68 @@ function renderPresseroEngineSelect() {
   renderSelectOptions(els.pcEngineSelect, options, "Choisir un moteur");
 }
 
-function presseroOrganizationLabel(organization) {
+function organizationLabel(organization) {
   return organization.name || organization.clientId;
 }
 
-function renderPresseroOrganizationChoices() {
-  els.pcOrganizationChoices.innerHTML = "";
+function presseroOrganizationLabel(organization) {
+  return organizationLabel(organization);
+}
+
+function renderOrganizationChoices(datalist) {
+  datalist.innerHTML = "";
 
   for (const organization of state.organizations) {
     const item = document.createElement("option");
-    item.value = presseroOrganizationLabel(organization);
+    item.value = organizationLabel(organization);
     item.label = organization.clientId;
-    els.pcOrganizationChoices.appendChild(item);
+    datalist.appendChild(item);
   }
 }
 
-function findPresseroOrganization(value) {
+function renderNegotiatedOrganizationChoices() {
+  renderOrganizationChoices(els.npOrganizationChoices);
+}
+
+function renderPresseroOrganizationChoices() {
+  renderOrganizationChoices(els.pcOrganizationChoices);
+}
+
+function findOrganization(value) {
   const normalizedValue = text(value, "").trim().toLowerCase();
   if (!normalizedValue) return null;
 
   return state.organizations.find((organization) => {
     return (
       organization.clientId.toLowerCase() === normalizedValue ||
-      presseroOrganizationLabel(organization).toLowerCase() === normalizedValue
+      organizationLabel(organization).toLowerCase() === normalizedValue
     );
   }) || null;
 }
 
-function syncPresseroOrganizationFromName() {
-  const organization = findPresseroOrganization(els.pcOrganizationName.value);
+function findPresseroOrganization(value) {
+  return findOrganization(value);
+}
+
+function syncOrganizationFields(nameInput, idInput) {
+  const organization = findOrganization(nameInput.value);
 
   if (!organization) {
-    els.pcOrganizationId.value = "";
+    idInput.value = "";
     return false;
   }
 
-  els.pcOrganizationName.value = presseroOrganizationLabel(organization);
-  els.pcOrganizationId.value = organization.clientId;
+  nameInput.value = organizationLabel(organization);
+  idInput.value = organization.clientId;
   return true;
+}
+
+function syncNegotiatedOrganizationFromName() {
+  return syncOrganizationFields(els.npOrganizationName, els.npClientId);
+}
+
+function syncPresseroOrganizationFromName() {
+  return syncOrganizationFields(els.pcOrganizationName, els.pcOrganizationId);
 }
 
 function findEngine(engineId) {
@@ -888,6 +914,8 @@ function buildPricingBasisPayload() {
 }
 
 function buildPreviewPayload() {
+  syncNegotiatedOrganizationFromName();
+
   if (!els.npClientId.value.trim()) {
     throw new Error("Organisation ID est obligatoire.");
   }
@@ -948,6 +976,8 @@ function buildDirectSavePayload() {
 }
 
 function currentExistingProfilesUrl() {
+  syncNegotiatedOrganizationFromName();
+
   const clientId = els.npClientId.value.trim();
   const priceEngineId = state.negotiatedEngine?.id;
   const enginePriceGroupIntegrationId = els.npPriceGroupSelect.value;
@@ -1730,6 +1760,22 @@ function currentPresseroContextUrl() {
   return `/negotiated-prices/profiles?${params.toString()}`;
 }
 
+function summarizeNegotiatedProfileOption(profile) {
+  const combinations = (profile.combinations ?? [])
+    .map((combination) => {
+      return combination.optionSummary || combination.label || combination.combinationKey;
+    })
+    .filter(Boolean);
+  const visibleCombinations = combinations.slice(0, 2).join(" / ");
+  const hiddenCount = Math.max(0, combinations.length - 2);
+  const combinationLabel = `${profile.misId} (${profile.combinationCount} combinaisons)`;
+  const optionLabel = visibleCombinations
+    ? `${combinationLabel} | ${visibleCombinations}${hiddenCount ? ` / +${hiddenCount}` : ""}`
+    : combinationLabel;
+
+  return optionLabel.length > 240 ? `${optionLabel.slice(0, 237)}...` : optionLabel;
+}
+
 async function loadPresseroNegotiatedProfiles(selectedProfileId = "") {
   const requestId = state.presseroNegotiatedProfilesRequestId + 1;
   state.presseroNegotiatedProfilesRequestId = requestId;
@@ -1761,7 +1807,8 @@ async function loadPresseroNegotiatedProfiles(selectedProfileId = "") {
     for (const profile of state.presseroNegotiatedProfiles) {
       const item = document.createElement("option");
       item.value = profile.id;
-      item.textContent = `${profile.misId} (${profile.combinationCount} combinaisons)`;
+      item.textContent = summarizeNegotiatedProfileOption(profile);
+      item.title = summarizeNegotiatedProfileOption(profile);
       els.pcNegotiatedProfileSelect.appendChild(item);
     }
 
@@ -1973,7 +2020,7 @@ async function runPjmUpdate() {
     });
     const result = response.data || {};
     setSyncStatus(
-      `Sync terminee: ${Number(result.enginesProcessed || 0).toLocaleString("fr-FR")} moteurs, ${Number(result.mappingsProcessed || 0).toLocaleString("fr-FR")} mappings`,
+      `Sync terminee: ${Number(result.organizationsProcessed || 0).toLocaleString("fr-FR")} organisations, ${Number(result.enginesProcessed || 0).toLocaleString("fr-FR")} moteurs, ${Number(result.mappingsProcessed || 0).toLocaleString("fr-FR")} mappings`,
       "success"
     );
     await loadDashboard();
@@ -2012,7 +2059,10 @@ els.npPriceGroupSelect.addEventListener("change", () => {
   field.addEventListener("input", () => {
     clearNegotiatedCompatibility();
     clearMultiCombinations();
-    if (field === els.npClientId) {
+    if (field === els.npOrganizationName) {
+      syncNegotiatedOrganizationFromName();
+    }
+    if (field === els.npClientId || field === els.npOrganizationName) {
       state.editingExistingProfileId = null;
       loadExistingProfiles();
     }
@@ -2020,7 +2070,10 @@ els.npPriceGroupSelect.addEventListener("change", () => {
   field.addEventListener("change", () => {
     clearNegotiatedCompatibility();
     clearMultiCombinations();
-    if (field === els.npClientId) {
+    if (field === els.npOrganizationName) {
+      syncNegotiatedOrganizationFromName();
+    }
+    if (field === els.npClientId || field === els.npOrganizationName) {
       state.editingExistingProfileId = null;
       loadExistingProfiles();
     }

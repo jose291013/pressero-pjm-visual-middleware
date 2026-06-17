@@ -50,3 +50,10 @@ It is intentionally not mounted as an automatic server startup task.
 Sprint 6 adds read-only admin endpoints under `/pjm-sync/admin`.
 
 These endpoints consume the local Prisma tables only. They do not call PJM and do not mutate data. They are the backend surface for the first backoffice screen.
+
+Sprint 29 PJM Organizations adds PJM organizations as synchronized catalog data:
+
+- the sync client calls `POST /public/Organizations/list`;
+- organizations are normalized into `PjmOrganization`;
+- admin organization lists now read from synchronized PJM organizations;
+- `Prix negocies` and `Produits Pressero` show the organization name and keep the PJM organization ID read-only.
