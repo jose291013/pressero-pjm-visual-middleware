@@ -1,6 +1,7 @@
 import express from "express";
 import path from "node:path";
 import { healthRouter } from "./modules/health/health.routes.js";
+import { mediaLibraryRouter } from "./modules/media-library/mediaLibrary.routes.js";
 import { negotiatedPricesRouter } from "./modules/negotiated-prices/negotiatedPrices.routes.js";
 import { pjmSyncRouter } from "./modules/pjm-sync/pjmSync.routes.js";
 import { presseroConfigRouter } from "./modules/pressero-config/presseroConfig.routes.js";
@@ -14,6 +15,7 @@ export function createApp() {
   app.use("/public", express.static(publicRoot));
 
   app.use("/health", healthRouter);
+  app.use("/media-library", mediaLibraryRouter);
   app.use("/pjm-sync", pjmSyncRouter);
   app.use("/negotiated-prices", negotiatedPricesRouter);
   app.use("/pressero-config", presseroConfigRouter);

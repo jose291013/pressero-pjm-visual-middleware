@@ -24,7 +24,7 @@
         </div>
         <nav class="nav-list">
           <a class="is-active" href="#catalog" data-view-link="catalog">Catalogue PJM</a>
-          <a aria-disabled="true">Images</a>
+          <a href="#images" data-view-link="images">Images</a>
           <a aria-disabled="true">Mappings</a>
           <a href="#negotiated-prices" data-view-link="negotiated-prices">Prix negocies</a>
           <a href="#pressero-products" data-view-link="pressero-products">Produits Pressero</a>
@@ -153,6 +153,78 @@
             </section>
           </aside>
         </section>
+        </section>
+
+        <section class="admin-view" id="imagesView" data-view="images">
+          <section class="media-library-layout">
+            <div class="media-library-form-panel">
+              <div class="panel-heading">
+                <h2>Bibliotheque images</h2>
+                <span class="status-pill" id="mediaStatus">Pret</span>
+              </div>
+              <form class="media-form" id="mediaForm">
+                <input id="mediaAssetId" type="hidden">
+                <label>
+                  <span>Cle interne</span>
+                  <input id="mediaKey" type="text" placeholder="Generee depuis le nom si vide">
+                </label>
+                <label>
+                  <span>URL image</span>
+                  <input id="mediaUrl" type="url" placeholder="https://... ou /public/...">
+                </label>
+                <label>
+                  <span>Nom fichier</span>
+                  <input id="mediaFileName" type="text" placeholder="papier-couche-135g.webp">
+                </label>
+                <label>
+                  <span>Type MIME</span>
+                  <input id="mediaMimeType" type="text" placeholder="image/webp">
+                </label>
+                <label>
+                  <span>Texte alternatif</span>
+                  <input id="mediaAltText" type="text" placeholder="Label visible ou description">
+                </label>
+                <div class="media-dimensions">
+                  <label>
+                    <span>Largeur</span>
+                    <input id="mediaWidth" type="number" min="0" step="1" placeholder="px">
+                  </label>
+                  <label>
+                    <span>Hauteur</span>
+                    <input id="mediaHeight" type="number" min="0" step="1" placeholder="px">
+                  </label>
+                  <label>
+                    <span>Poids</span>
+                    <input id="mediaByteSize" type="number" min="0" step="1" placeholder="octets">
+                  </label>
+                </div>
+                <div class="panel-footer">
+                  <button class="action-button" id="mediaSaveButton" type="submit">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path>
+                      <path d="M17 21v-8H7v8"></path>
+                      <path d="M7 3v5h8"></path>
+                    </svg>
+                    Enregistrer
+                  </button>
+                  <button class="action-button" id="mediaResetButton" type="button">Nouveau</button>
+                </div>
+              </form>
+            </div>
+
+            <aside class="media-library-list-panel">
+              <div class="panel-heading">
+                <h2>Images et icones</h2>
+                <span class="panel-count" id="mediaAssetCount">0</span>
+              </div>
+              <div class="media-search">
+                <input id="mediaSearch" type="search" placeholder="Rechercher une image">
+              </div>
+              <div class="media-asset-list" id="mediaAssetList">
+                <div class="empty-state">Aucune image dans la bibliotheque.</div>
+              </div>
+            </aside>
+          </section>
         </section>
 
         <section class="admin-view" id="negotiatedPricesView" data-view="negotiated-prices">

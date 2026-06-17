@@ -49,3 +49,9 @@ Negotiated pricing profile choices are loaded with stale-request protection, and
 In `Produits Pressero`, the price group is required only for `PJM standard`.
 
 For `Prix negocie`, the admin selects organization, PJM engine and negotiated MIS ID. The group used for the PJM reference price is derived from the negotiated profile itself, so the admin does not need to remember which price group was used during negotiated price creation.
+
+## Sprint 31 Media Library Admin
+
+The `Images` admin section now manages `MediaAsset` records by URL.
+
+This is the shared image/icon library for both future standard PJM visual products and negotiated products. It does not change PJM pricing or Pressero native quantity behavior; it only prepares stable media references that later mappings can attach to real PJM option choices.

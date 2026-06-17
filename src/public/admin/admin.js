@@ -9,6 +9,8 @@ const state = {
   existingProfiles: [],
   editingExistingProfileId: null,
   multiCombinations: [],
+  mediaAssets: [],
+  editingMediaAssetId: null,
   presseroConfigs: [],
   presseroNegotiatedProfiles: [],
   presseroNegotiatedProfilesRequestId: 0
@@ -37,6 +39,22 @@ const els = {
   detailOptionsCount: document.getElementById("detailOptionsCount"),
   mappingList: document.getElementById("mappingList"),
   optionList: document.getElementById("optionList"),
+  mediaStatus: document.getElementById("mediaStatus"),
+  mediaForm: document.getElementById("mediaForm"),
+  mediaAssetId: document.getElementById("mediaAssetId"),
+  mediaKey: document.getElementById("mediaKey"),
+  mediaUrl: document.getElementById("mediaUrl"),
+  mediaFileName: document.getElementById("mediaFileName"),
+  mediaMimeType: document.getElementById("mediaMimeType"),
+  mediaAltText: document.getElementById("mediaAltText"),
+  mediaWidth: document.getElementById("mediaWidth"),
+  mediaHeight: document.getElementById("mediaHeight"),
+  mediaByteSize: document.getElementById("mediaByteSize"),
+  mediaSaveButton: document.getElementById("mediaSaveButton"),
+  mediaResetButton: document.getElementById("mediaResetButton"),
+  mediaSearch: document.getElementById("mediaSearch"),
+  mediaAssetCount: document.getElementById("mediaAssetCount"),
+  mediaAssetList: document.getElementById("mediaAssetList"),
   negotiatedStatus: document.getElementById("negotiatedStatus"),
   npClientId: document.getElementById("npClientId"),
   npOrganizationName: document.getElementById("npOrganizationName"),
@@ -170,6 +188,8 @@ function setBusyButtons(isBusy) {
   els.npDirectSaveButton.disabled = isBusy;
   els.npAddCombinationButton.disabled = isBusy;
   els.npMultiSaveButton.disabled = isBusy;
+  els.mediaSaveButton.disabled = isBusy;
+  els.mediaResetButton.disabled = isBusy;
   els.pcSaveButton.disabled = isBusy;
   els.pcResetButton.disabled = isBusy;
 }
@@ -186,6 +206,8 @@ function setView(viewName) {
   els.pageTitle.textContent =
     viewName === "negotiated-prices"
       ? "Prix negocies"
+      : viewName === "images"
+        ? "Images"
       : viewName === "pressero-products"
         ? "Produits Pressero"
         : "Catalogue PJM";
@@ -517,6 +539,180 @@ async function selectEngine(engineId) {
   } catch (error) {
     els.detailStatus.textContent = "Erreur";
     els.optionList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  }
+}
+
+function resetMediaForm() {
+  state.editingMediaAssetId = null;
+  els.mediaAssetId.value = "";
+  els.mediaKey.value = "";
+  els.mediaUrl.value = "";
+  els.mediaFileName.value = "";
+  els.mediaMimeType.value = "";
+  els.mediaAltText.value = "";
+  els.mediaWidth.value = "";
+  els.mediaHeight.value = "";
+  els.mediaByteSize.value = "";
+  els.mediaStatus.textContent = "Pret";
+}
+
+function buildMediaAssetPayload() {
+  return {
+    key: els.mediaKey.value.trim(),
+    url: els.mediaUrl.value.trim(),
+    fileName: els.mediaFileName.value.trim(),
+    mimeType: els.mediaMimeType.value.trim(),
+    altText: els.mediaAltText.value.trim(),
+    width: els.mediaWidth.value.trim(),
+    height: els.mediaHeight.value.trim(),
+    byteSize: els.mediaByteSize.value.trim()
+  };
+}
+
+function editMediaAsset(assetId) {
+  const asset = state.mediaAssets.find((item) => item.id === assetId);
+  if (!asset) return;
+
+  state.editingMediaAssetId = asset.id;
+  els.mediaAssetId.value = asset.id;
+  els.mediaKey.value = asset.key;
+  els.mediaUrl.value = asset.url;
+  els.mediaFileName.value = asset.fileName;
+  els.mediaMimeType.value = asset.mimeType;
+  els.mediaAltText.value = asset.altText ?? "";
+  els.mediaWidth.value = asset.width ?? "";
+  els.mediaHeight.value = asset.height ?? "";
+  els.mediaByteSize.value = asset.byteSize ?? "";
+  els.mediaStatus.textContent = "Edition";
+}
+
+function renderMediaAssets() {
+  els.mediaAssetCount.textContent = state.mediaAssets.length.toLocaleString("fr-FR");
+  els.mediaAssetList.innerHTML = "";
+
+  if (!state.mediaAssets.length) {
+    els.mediaAssetList.innerHTML = '<div class="empty-state">Aucune image dans la bibliotheque.</div>';
+    return;
+  }
+
+  for (const asset of state.mediaAssets) {
+    const item = document.createElement("article");
+    item.className = "media-asset-item";
+    item.innerHTML = `
+      <div class="media-thumb">
+        <img src="${html(asset.url)}" alt="${html(asset.altText || asset.key)}" loading="lazy">
+      </div>
+      <div class="media-asset-body">
+        <strong>${html(asset.key)}</strong>
+        <span>${html(asset.fileName)} | ${html(asset.mimeType)}</span>
+        <small>${html(asset.url)}</small>
+        <small>${Number(asset.visualMappingCount || 0).toLocaleString("fr-FR")} mapping(s)</small>
+      </div>
+      <div class="media-asset-actions">
+        <button type="button" class="secondary" data-media-action="edit" data-asset-id="${html(asset.id)}">Modifier</button>
+        <button type="button" class="danger" data-media-action="delete" data-asset-id="${html(asset.id)}">Supprimer</button>
+      </div>
+    `;
+    els.mediaAssetList.appendChild(item);
+  }
+}
+
+async function loadMediaAssets() {
+  try {
+    const params = new URLSearchParams();
+    const search = els.mediaSearch.value.trim();
+    if (search) {
+      params.set("search", search);
+    }
+
+    const response = await getJson(
+      `/media-library/admin/assets${params.toString() ? `?${params.toString()}` : ""}`
+    );
+    state.mediaAssets = response.data ?? [];
+    renderMediaAssets();
+  } catch (error) {
+    els.mediaAssetCount.textContent = "Erreur";
+    els.mediaAssetList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  }
+}
+
+async function saveMediaAsset(event) {
+  event.preventDefault();
+  els.mediaStatus.textContent = "Enregistrement";
+  setBusyButtons(true);
+
+  try {
+    const assetId = els.mediaAssetId.value;
+    const response = await getJson(
+      assetId
+        ? `/media-library/admin/assets/${encodeURIComponent(assetId)}`
+        : "/media-library/admin/assets",
+      {
+        method: assetId ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(buildMediaAssetPayload())
+      }
+    );
+
+    state.editingMediaAssetId = response.data?.id ?? "";
+    els.mediaAssetId.value = response.data?.id ?? "";
+    els.mediaKey.value = response.data?.key ?? els.mediaKey.value;
+    els.mediaFileName.value = response.data?.fileName ?? els.mediaFileName.value;
+    els.mediaMimeType.value = response.data?.mimeType ?? els.mediaMimeType.value;
+    els.mediaStatus.textContent = "Enregistre";
+    await loadMediaAssets();
+  } catch (error) {
+    els.mediaStatus.textContent = "Erreur";
+    els.mediaAssetList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+async function deleteMediaAssetById(assetId) {
+  const asset = state.mediaAssets.find((item) => item.id === assetId);
+  if (!asset) return;
+
+  if (!window.confirm(`Supprimer l'image ${asset.key} ?`)) {
+    return;
+  }
+
+  els.mediaStatus.textContent = "Suppression";
+  setBusyButtons(true);
+
+  try {
+    await getJson(`/media-library/admin/assets/${encodeURIComponent(assetId)}`, {
+      method: "DELETE"
+    });
+    if (els.mediaAssetId.value === assetId) {
+      resetMediaForm();
+    }
+    await loadMediaAssets();
+    els.mediaStatus.textContent = "Supprime";
+  } catch (error) {
+    els.mediaStatus.textContent = "Erreur";
+    els.mediaAssetList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+async function handleMediaAssetAction(event) {
+  const button = event.target.closest("[data-media-action]");
+  if (!button) return;
+
+  const assetId = button.dataset.assetId;
+  if (!assetId) return;
+
+  if (button.dataset.mediaAction === "edit") {
+    editMediaAsset(assetId);
+    return;
+  }
+
+  if (button.dataset.mediaAction === "delete") {
+    await deleteMediaAssetById(assetId);
   }
 }
 
@@ -2006,19 +2202,23 @@ async function loadDashboard() {
       summaryResponse,
       enginesResponse,
       organizationsResponse,
+      mediaAssetsResponse,
       presseroConfigsResponse
     ] = await Promise.all([
       getJson("/pjm-sync/admin/summary"),
       getJson("/pjm-sync/admin/price-engines"),
       getJson("/pjm-sync/admin/organizations"),
+      getJson("/media-library/admin/assets"),
       getJson("/pressero-config/admin/product-configs")
     ]);
 
     renderSummary(summaryResponse.data);
     state.engines = enginesResponse.data ?? [];
     state.organizations = organizationsResponse.data ?? [];
+    state.mediaAssets = mediaAssetsResponse.data ?? [];
     state.presseroConfigs = presseroConfigsResponse.data ?? [];
     renderFilters();
+    renderMediaAssets();
     renderPresseroConfigs();
 
     if (!state.selectedEngineId && state.engines[0]) {
@@ -2122,6 +2322,10 @@ els.npDirectSaveButton.addEventListener("click", saveDirectPrices);
 els.npAddCombinationButton.addEventListener("click", addCurrentCombinationToMulti);
 els.npMultiSaveButton.addEventListener("click", saveMultiCombinations);
 els.npExistingProfileList.addEventListener("click", handleExistingProfileAction);
+els.mediaForm.addEventListener("submit", saveMediaAsset);
+els.mediaResetButton.addEventListener("click", resetMediaForm);
+els.mediaAssetList.addEventListener("click", handleMediaAssetAction);
+els.mediaSearch.addEventListener("input", loadMediaAssets);
 els.pcForm.addEventListener("submit", savePresseroConfig);
 els.pcResetButton.addEventListener("click", resetPresseroConfigForm);
 els.pcConfigList.addEventListener("click", handlePresseroConfigAction);
