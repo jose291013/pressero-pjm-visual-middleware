@@ -1024,6 +1024,14 @@ tbody tr.is-selected {
   line-height: 1.35;
 }
 
+.pressero-config-form .is-disabled-field {
+  opacity: 0.55;
+}
+
+.pressero-config-form .is-disabled-field select {
+  cursor: not-allowed;
+}
+
 .pressero-config-list {
   display: grid;
   align-content: start;

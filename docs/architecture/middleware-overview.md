@@ -42,4 +42,10 @@ Pressero pairs `Pricing Engine price 1` with `MIS Product ID price 1`. The prici
 
 The `Produits Pressero` admin form now uses the visible organization name as the editable field. The organization integration ID is derived from that selection and kept read-only.
 
-Negotiated pricing profile choices are loaded for the selected organization, PJM engine and price group. Concurrent reloads are ignored when stale, and duplicate profiles are removed before rendering.
+Negotiated pricing profile choices are loaded with stale-request protection, and duplicate profiles are removed before rendering.
+
+## Sprint 30 Pressero Negotiated Without Group
+
+In `Produits Pressero`, the price group is required only for `PJM standard`.
+
+For `Prix negocie`, the admin selects organization, PJM engine and negotiated MIS ID. The group used for the PJM reference price is derived from the negotiated profile itself, so the admin does not need to remember which price group was used during negotiated price creation.

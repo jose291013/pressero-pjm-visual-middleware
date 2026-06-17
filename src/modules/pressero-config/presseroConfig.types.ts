@@ -7,7 +7,7 @@ export type PresseroProductConfigInput = {
   organizationIntegrationId: string;
   organizationName?: string;
   priceEngineId: string;
-  enginePriceGroupIntegrationId: string;
+  enginePriceGroupIntegrationId?: string;
   priceGroupName?: string;
   negotiatedProfileId?: string | null;
   notes?: string;

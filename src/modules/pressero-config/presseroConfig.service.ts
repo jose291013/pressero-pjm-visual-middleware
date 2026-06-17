@@ -120,24 +120,6 @@ async function assertProductConfigContext(
     throw new Error("Moteur PJM obligatoire.");
   }
 
-  if (!input.enginePriceGroupIntegrationId) {
-    throw new Error("Groupe de prix obligatoire.");
-  }
-
-  const mapping = await prisma.pjmEnginePriceGroupMapping.findFirst({
-    where: {
-      priceEngineId: input.priceEngineId,
-      enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId
-    },
-    include: {
-      priceGroup: true
-    }
-  });
-
-  if (!mapping) {
-    throw new Error("Le groupe de prix ne correspond pas au moteur PJM choisi.");
-  }
-
   if (input.pricingMode === "negotiated") {
     if (!input.negotiatedProfileId) {
       throw new Error("MISID negocie obligatoire pour le mode prix negocie.");
@@ -156,14 +138,41 @@ async function assertProductConfigContext(
 
     if (
       profile.organizationIntegrationId !== input.organizationIntegrationId ||
-      profile.priceEngineId !== input.priceEngineId ||
-      profile.enginePriceGroupIntegrationId !== input.enginePriceGroupIntegrationId
+      profile.priceEngineId !== input.priceEngineId
     ) {
       throw new Error("Le MISID negocie ne correspond pas au contexte Pressero.");
     }
+
+    if (!profile.enginePriceGroupIntegrationId) {
+      throw new Error("Le MISID negocie n'a pas de groupe PJM de reference.");
+    }
+
+    return {
+      enginePriceGroupIntegrationId: profile.enginePriceGroupIntegrationId,
+      priceGroupName: profile.priceGroupName
+    };
+  }
+
+  if (!input.enginePriceGroupIntegrationId) {
+    throw new Error("Groupe de prix obligatoire.");
+  }
+
+  const mapping = await prisma.pjmEnginePriceGroupMapping.findFirst({
+    where: {
+      priceEngineId: input.priceEngineId,
+      enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId
+    },
+    include: {
+      priceGroup: true
+    }
+  });
+
+  if (!mapping) {
+    throw new Error("Le groupe de prix ne correspond pas au moteur PJM choisi.");
   }
 
   return {
+    enginePriceGroupIntegrationId: input.enginePriceGroupIntegrationId,
     priceGroupName: input.priceGroupName || mapping.priceGroup.name
   };
 }
@@ -202,6 +211,7 @@ export async function createPresseroProductConfig(
     data: {
       ...normalized,
       misProductId,
+      enginePriceGroupIntegrationId: context.enginePriceGroupIntegrationId,
       priceGroupName: context.priceGroupName
     },
     include: productConfigInclude
@@ -236,6 +246,7 @@ export async function updatePresseroProductConfig(
     data: {
       ...normalized,
       misProductId: normalized.misProductId || existing.misProductId,
+      enginePriceGroupIntegrationId: context.enginePriceGroupIntegrationId,
       priceGroupName: context.priceGroupName
     },
     include: productConfigInclude

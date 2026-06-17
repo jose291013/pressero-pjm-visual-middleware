@@ -1700,6 +1700,7 @@ function resetPresseroConfigForm() {
   els.pcNotes.value = "";
   state.presseroNegotiatedProfiles = [];
   state.presseroNegotiatedProfilesRequestId += 1;
+  updatePresseroPricingModeFields();
   els.pcStatus.textContent = "Pret";
 }
 
@@ -1746,17 +1747,20 @@ async function loadPresseroProductConfigs() {
 function currentPresseroContextUrl() {
   const clientId = els.pcOrganizationId.value.trim();
   const priceEngineId = els.pcEngineSelect.value;
-  const enginePriceGroupIntegrationId = els.pcPriceGroupSelect.value;
 
-  if (!clientId || !priceEngineId || !enginePriceGroupIntegrationId) {
+  if (!clientId || !priceEngineId) {
     return null;
   }
 
   const params = new URLSearchParams({
     clientId,
-    priceEngineId,
-    enginePriceGroupIntegrationId
+    priceEngineId
   });
+
+  if (els.pcPriceGroupSelect.value) {
+    params.set("enginePriceGroupIntegrationId", els.pcPriceGroupSelect.value);
+  }
+
   return `/negotiated-prices/profiles?${params.toString()}`;
 }
 
@@ -1768,12 +1772,30 @@ function summarizeNegotiatedProfileOption(profile) {
     .filter(Boolean);
   const visibleCombinations = combinations.slice(0, 2).join(" / ");
   const hiddenCount = Math.max(0, combinations.length - 2);
-  const combinationLabel = `${profile.misId} (${profile.combinationCount} combinaisons)`;
+  const groupLabel = profile.priceGroupName ? ` | ${profile.priceGroupName}` : "";
+  const combinationLabel =
+    `${profile.misId} (${profile.combinationCount} combinaisons)${groupLabel}`;
   const optionLabel = visibleCombinations
     ? `${combinationLabel} | ${visibleCombinations}${hiddenCount ? ` / +${hiddenCount}` : ""}`
     : combinationLabel;
 
   return optionLabel.length > 240 ? `${optionLabel.slice(0, 237)}...` : optionLabel;
+}
+
+function findPresseroNegotiatedProfile(profileId) {
+  return state.presseroNegotiatedProfiles.find((profile) => profile.id === profileId) || null;
+}
+
+function updatePresseroPricingModeFields() {
+  const negotiatedMode = els.pcPricingMode.value === "negotiated";
+  const priceGroupField = els.pcPriceGroupSelect.closest(".pc-price-group-field");
+
+  els.pcPriceGroupSelect.disabled = negotiatedMode;
+  priceGroupField?.classList.toggle("is-disabled-field", negotiatedMode);
+
+  if (negotiatedMode) {
+    els.pcPriceGroupSelect.value = "";
+  }
 }
 
 async function loadPresseroNegotiatedProfiles(selectedProfileId = "") {
@@ -1833,17 +1855,26 @@ async function loadPresseroNegotiatedProfiles(selectedProfileId = "") {
 function buildPresseroConfigPayload() {
   syncPresseroOrganizationFromName();
   const selectedPriceGroup = els.pcPriceGroupSelect.selectedOptions[0];
+  const negotiatedProfile = findPresseroNegotiatedProfile(els.pcNegotiatedProfileSelect.value);
+  const pricingMode = els.pcPricingMode.value === "negotiated" ? "negotiated" : "pjmLive";
+
   return {
     misProductId: els.pcMisProductId.value.trim(),
     name: els.pcName.value.trim(),
-    pricingMode: els.pcPricingMode.value === "negotiated" ? "negotiated" : "pjmLive",
+    pricingMode,
     organizationIntegrationId: els.pcOrganizationId.value.trim(),
     organizationName: els.pcOrganizationName.value.trim(),
     priceEngineId: els.pcEngineSelect.value,
-    enginePriceGroupIntegrationId: els.pcPriceGroupSelect.value,
-    priceGroupName: selectedPriceGroup?.textContent || "",
+    enginePriceGroupIntegrationId:
+      pricingMode === "negotiated"
+        ? negotiatedProfile?.enginePriceGroupIntegrationId || ""
+        : els.pcPriceGroupSelect.value,
+    priceGroupName:
+      pricingMode === "negotiated"
+        ? negotiatedProfile?.priceGroupName || ""
+        : selectedPriceGroup?.textContent || "",
     negotiatedProfileId:
-      els.pcPricingMode.value === "negotiated" ? els.pcNegotiatedProfileSelect.value : null,
+      pricingMode === "negotiated" ? els.pcNegotiatedProfileSelect.value : null,
     notes: els.pcNotes.value.trim()
   };
 }
@@ -1899,6 +1930,7 @@ async function editPresseroConfig(configId) {
   els.pcPriceGroupSelect.value = config.enginePriceGroupIntegrationId;
   els.pcPricingMode.value = config.pricingMode;
   els.pcNotes.value = config.notes ?? "";
+  updatePresseroPricingModeFields();
   await loadPresseroNegotiatedProfiles(config.negotiatedProfileId ?? "");
   els.pcStatus.textContent = "Edition";
 }
@@ -2095,6 +2127,7 @@ els.pcResetButton.addEventListener("click", resetPresseroConfigForm);
 els.pcConfigList.addEventListener("click", handlePresseroConfigAction);
 els.pcEngineSelect.addEventListener("change", () => {
   renderPriceGroupSelect(els.pcPriceGroupSelect, findEngine(els.pcEngineSelect.value));
+  updatePresseroPricingModeFields();
   loadPresseroNegotiatedProfiles();
 });
 [
@@ -2106,11 +2139,17 @@ els.pcEngineSelect.addEventListener("change", () => {
     if (field === els.pcOrganizationName) {
       syncPresseroOrganizationFromName();
     }
+    if (field === els.pcPricingMode) {
+      updatePresseroPricingModeFields();
+    }
     loadPresseroNegotiatedProfiles();
   });
   field.addEventListener("change", () => {
     if (field === els.pcOrganizationName) {
       syncPresseroOrganizationFromName();
+    }
+    if (field === els.pcPricingMode) {
+      updatePresseroPricingModeFields();
     }
     loadPresseroNegotiatedProfiles();
   });

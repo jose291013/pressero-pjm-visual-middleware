@@ -37,6 +37,7 @@
     "test:sprint27": "node scripts/test-sprint-27-generated-mis-product-id.mjs",
     "test:sprint28": "node scripts/test-sprint-28-pressero-org-search-dedupe.mjs",
     "test:sprint29": "node scripts/test-sprint-29-pjm-organizations.mjs",
+    "test:sprint30": "node scripts/test-sprint-30-pressero-negotiated-without-group.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

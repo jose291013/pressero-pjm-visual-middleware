@@ -208,6 +208,8 @@ export type NegotiatedPriceExistingProfile = {
   misId: string;
   profileMode: NegotiatedPriceProfileMode;
   visibilityMode: NegotiatedPriceVisibilityMode;
+  enginePriceGroupIntegrationId: string | null;
+  priceGroupName: string | null;
   combinationCount: number;
   tierCount: number;
   combinations: NegotiatedPriceExistingCombination[];

@@ -278,6 +278,8 @@ function serializeExistingProfile(
     misId: profile.misId || profile.name,
     profileMode: profile.profileMode,
     visibilityMode: profile.visibilityMode,
+    enginePriceGroupIntegrationId: profile.enginePriceGroupIntegrationId,
+    priceGroupName: profile.priceGroupName,
     combinationCount: profile.combinations.length,
     tierCount,
     combinations: profile.combinations.map((combination) => ({
@@ -303,19 +305,23 @@ export async function listExistingNegotiatedPriceProfiles(
 
   if (
     !context.organizationIntegrationId ||
-    !context.priceEngineId ||
-    !context.enginePriceGroupIntegrationId
+    !context.priceEngineId
   ) {
     return [];
   }
 
+  const where: Prisma.NegotiatedPriceProfileWhereInput = {
+    organizationIntegrationId: context.organizationIntegrationId,
+    priceEngineId: context.priceEngineId,
+    isActive: true
+  };
+
+  if (context.enginePriceGroupIntegrationId) {
+    where.enginePriceGroupIntegrationId = context.enginePriceGroupIntegrationId;
+  }
+
   const profiles = await prisma.negotiatedPriceProfile.findMany({
-    where: {
-      organizationIntegrationId: context.organizationIntegrationId,
-      priceEngineId: context.priceEngineId,
-      enginePriceGroupIntegrationId: context.enginePriceGroupIntegrationId,
-      isActive: true
-    },
+    where,
     include: existingProfileInclude,
     orderBy: {
       updatedAt: "desc"
