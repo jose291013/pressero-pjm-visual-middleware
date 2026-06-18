@@ -25,7 +25,7 @@
         <nav class="nav-list">
           <a class="is-active" href="#catalog" data-view-link="catalog">Catalogue PJM</a>
           <a href="#images" data-view-link="images">Images</a>
-          <a aria-disabled="true">Mappings</a>
+          <a href="#mappings" data-view-link="mappings">Mappings</a>
           <a href="#negotiated-prices" data-view-link="negotiated-prices">Prix negocies</a>
           <a href="#pressero-products" data-view-link="pressero-products">Produits Pressero</a>
         </nav>
@@ -237,6 +237,94 @@
               </div>
               <div class="media-asset-list" id="mediaAssetList">
                 <div class="empty-state">Aucune image dans la bibliotheque.</div>
+              </div>
+            </aside>
+          </section>
+        </section>
+
+        <section class="admin-view" id="mappingsView" data-view="mappings">
+          <section class="visual-mapping-layout">
+            <div class="visual-mapping-control-panel">
+              <div class="panel-heading">
+                <h2>Mapping options/images</h2>
+                <span class="status-pill" id="vmStatus">Pret</span>
+              </div>
+              <div class="visual-mapping-form">
+                <label>
+                  <span>Moteur PJM</span>
+                  <select id="vmEngineSelect">
+                    <option value="">Choisir un moteur</option>
+                  </select>
+                </label>
+                <dl class="preview-metrics">
+                  <div>
+                    <dt>Choix</dt>
+                    <dd id="vmTotalCount">0</dd>
+                  </div>
+                  <div>
+                    <dt>Mappes</dt>
+                    <dd id="vmMappedCount">0</dd>
+                  </div>
+                  <div>
+                    <dt>Auto-match</dt>
+                    <dd id="vmAutoMatchCount">0</dd>
+                  </div>
+                  <div>
+                    <dt>Manquants</dt>
+                    <dd id="vmMissingCount">0</dd>
+                  </div>
+                </dl>
+                <div class="visual-mapping-actions">
+                  <button class="action-button" id="vmLoadButton" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M20 12a8 8 0 1 1-2.34-5.66"></path>
+                      <path d="M20 4v6h-6"></path>
+                    </svg>
+                    Charger
+                  </button>
+                  <button class="action-button" id="vmAutoMatchButton" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                    Auto-mapper
+                  </button>
+                  <button class="action-button" id="vmExportButton" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 3v12"></path>
+                      <path d="m7 10 5 5 5-5"></path>
+                      <path d="M5 21h14"></path>
+                    </svg>
+                    Export Excel
+                  </button>
+                </div>
+                <section class="visual-mapping-import-box">
+                  <label>
+                    <span>Import mapping Excel</span>
+                    <input id="vmImportFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                  </label>
+                  <button class="action-button" id="vmImportButton" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 3v12"></path>
+                      <path d="m17 8-5-5-5 5"></path>
+                      <path d="M5 21h14"></path>
+                    </svg>
+                    Importer Excel
+                  </button>
+                  <div class="media-import-result" id="vmImportResult"></div>
+                </section>
+              </div>
+            </div>
+
+            <aside class="visual-mapping-list-panel">
+              <div class="panel-heading">
+                <h2>Choix PJM</h2>
+                <span class="panel-count" id="vmRowCount">0</span>
+              </div>
+              <div class="media-search">
+                <input id="vmSearch" type="search" placeholder="Filtrer option, choix ou image">
+              </div>
+              <div class="visual-mapping-list" id="vmMappingList">
+                <div class="empty-state">Choisissez un moteur pour voir les choix PJM.</div>
               </div>
             </aside>
           </section>

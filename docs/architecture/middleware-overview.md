@@ -61,3 +61,14 @@ This is the shared image/icon library for both future standard PJM visual produc
 The media library can import a ZIP of image/icon files and store them under a public middleware URL.
 
 Default storage is `src/public/media/assets`, exposed as `/public/media/assets/...`. On Render, set `MEDIA_ASSETS_DIR` to a persistent disk path such as `/var/data/media/assets` if uploaded files must survive redeployments. The database still stores only `MediaAsset` metadata and URLs.
+
+## Sprint 33 Visual Option Mapping
+
+The `visual-options` module is now mounted under `/visual-options`.
+
+Its admin endpoints let the backoffice build the stable relationship between synchronized PJM choices and media assets. This mapping is independent from the pricing mode:
+
+- standard PJM products will use it to display image/icon choices while PJM keeps calculating the price;
+- negotiated products will use the same image/icon library while the middleware resolves negotiated MIS IDs and tiers.
+
+The Excel export/import flow is intended for bulk preparation. Image files can be imported as a ZIP, then option mappings can be exported, filled with `MediaAsset.key` values and imported back.

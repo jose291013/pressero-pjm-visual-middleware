@@ -40,6 +40,7 @@
     "test:sprint30": "node scripts/test-sprint-30-pressero-negotiated-without-group.mjs",
     "test:sprint31": "node scripts/test-sprint-31-media-library-admin.mjs",
     "test:sprint32": "node scripts/test-sprint-32-media-zip-import.mjs",
+    "test:sprint33": "node scripts/test-sprint-33-visual-option-mapping-admin.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

@@ -11,6 +11,7 @@ const state = {
   multiCombinations: [],
   mediaAssets: [],
   editingMediaAssetId: null,
+  visualMappingSummary: null,
   presseroConfigs: [],
   presseroNegotiatedProfiles: [],
   presseroNegotiatedProfilesRequestId: 0
@@ -58,6 +59,21 @@ const els = {
   mediaSearch: document.getElementById("mediaSearch"),
   mediaAssetCount: document.getElementById("mediaAssetCount"),
   mediaAssetList: document.getElementById("mediaAssetList"),
+  vmStatus: document.getElementById("vmStatus"),
+  vmEngineSelect: document.getElementById("vmEngineSelect"),
+  vmTotalCount: document.getElementById("vmTotalCount"),
+  vmMappedCount: document.getElementById("vmMappedCount"),
+  vmAutoMatchCount: document.getElementById("vmAutoMatchCount"),
+  vmMissingCount: document.getElementById("vmMissingCount"),
+  vmLoadButton: document.getElementById("vmLoadButton"),
+  vmAutoMatchButton: document.getElementById("vmAutoMatchButton"),
+  vmExportButton: document.getElementById("vmExportButton"),
+  vmImportFile: document.getElementById("vmImportFile"),
+  vmImportButton: document.getElementById("vmImportButton"),
+  vmImportResult: document.getElementById("vmImportResult"),
+  vmSearch: document.getElementById("vmSearch"),
+  vmRowCount: document.getElementById("vmRowCount"),
+  vmMappingList: document.getElementById("vmMappingList"),
   negotiatedStatus: document.getElementById("negotiatedStatus"),
   npClientId: document.getElementById("npClientId"),
   npOrganizationName: document.getElementById("npOrganizationName"),
@@ -194,6 +210,10 @@ function setBusyButtons(isBusy) {
   els.mediaZipImportButton.disabled = isBusy;
   els.mediaSaveButton.disabled = isBusy;
   els.mediaResetButton.disabled = isBusy;
+  els.vmLoadButton.disabled = isBusy;
+  els.vmAutoMatchButton.disabled = isBusy;
+  els.vmExportButton.disabled = isBusy;
+  els.vmImportButton.disabled = isBusy;
   els.pcSaveButton.disabled = isBusy;
   els.pcResetButton.disabled = isBusy;
 }
@@ -207,14 +227,14 @@ function setView(viewName) {
     link.classList.toggle("is-active", link.dataset.viewLink === viewName);
   });
 
-  els.pageTitle.textContent =
-    viewName === "negotiated-prices"
-      ? "Prix negocies"
-      : viewName === "images"
-        ? "Images"
-      : viewName === "pressero-products"
-        ? "Produits Pressero"
-        : "Catalogue PJM";
+  const pageTitles = {
+    catalog: "Catalogue PJM",
+    images: "Images",
+    mappings: "Mappings",
+    "negotiated-prices": "Prix negocies",
+    "pressero-products": "Produits Pressero"
+  };
+  els.pageTitle.textContent = pageTitles[viewName] || pageTitles.catalog;
 }
 
 function renderSummary(summary) {
@@ -279,6 +299,7 @@ function renderFilters() {
   renderSelectOptions(els.priceGroupFilter, uniqueOptions(priceGroups), "Tous");
   renderNegotiatedEngineSelect();
   renderPresseroEngineSelect();
+  renderVisualMappingEngineSelect();
   renderNegotiatedOrganizationChoices();
   renderPresseroOrganizationChoices();
 }
@@ -297,6 +318,14 @@ function renderPresseroEngineSelect() {
     label: engine.name
   }));
   renderSelectOptions(els.pcEngineSelect, options, "Choisir un moteur");
+}
+
+function renderVisualMappingEngineSelect() {
+  const options = state.engines.map((engine) => ({
+    value: engine.id,
+    label: engine.name
+  }));
+  renderSelectOptions(els.vmEngineSelect, options, "Choisir un moteur");
 }
 
 function organizationLabel(organization) {
@@ -770,6 +799,247 @@ async function handleMediaAssetAction(event) {
 
   if (button.dataset.mediaAction === "delete") {
     await deleteMediaAssetById(assetId);
+  }
+}
+
+function resetVisualMappingCounts() {
+  els.vmTotalCount.textContent = "0";
+  els.vmMappedCount.textContent = "0";
+  els.vmAutoMatchCount.textContent = "0";
+  els.vmMissingCount.textContent = "0";
+  els.vmRowCount.textContent = "0";
+}
+
+function visualMappingRows() {
+  const query = els.vmSearch.value.trim().toLowerCase();
+  const rows = state.visualMappingSummary?.rows ?? [];
+
+  if (!query) {
+    return rows;
+  }
+
+  return rows.filter((row) => {
+    return [
+      row.optionLabel,
+      row.choiceLabel,
+      row.normalizedChoiceKey,
+      row.mappedAssetKey,
+      row.suggestedAssetKey,
+      row.status
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+  });
+}
+
+function renderVisualMappingSummary() {
+  const summary = state.visualMappingSummary;
+  const counts = summary?.counts ?? {
+    totalChoices: 0,
+    mapped: 0,
+    autoMatch: 0,
+    missing: 0
+  };
+
+  els.vmTotalCount.textContent = Number(counts.totalChoices || 0).toLocaleString("fr-FR");
+  els.vmMappedCount.textContent = Number(counts.mapped || 0).toLocaleString("fr-FR");
+  els.vmAutoMatchCount.textContent = Number(counts.autoMatch || 0).toLocaleString("fr-FR");
+  els.vmMissingCount.textContent = Number(counts.missing || 0).toLocaleString("fr-FR");
+
+  const rows = visualMappingRows();
+  els.vmRowCount.textContent = rows.length.toLocaleString("fr-FR");
+  els.vmMappingList.innerHTML = "";
+
+  if (!summary) {
+    els.vmMappingList.innerHTML = '<div class="empty-state">Choisissez un moteur pour voir les choix PJM.</div>';
+    return;
+  }
+
+  if (!rows.length) {
+    els.vmMappingList.innerHTML = '<div class="empty-state">Aucun choix PJM pour ce filtre.</div>';
+    return;
+  }
+
+  for (const row of rows) {
+    const item = document.createElement("article");
+    item.className = `visual-mapping-item is-${row.status}`;
+    const imageUrl = row.mappedAssetUrl || row.suggestedAssetUrl || "";
+    const imageKey = row.mappedAssetKey || row.suggestedAssetKey || "";
+    const statusLabel =
+      row.status === "mapped"
+        ? "Mappe"
+        : row.status === "auto_match"
+          ? "Auto-match"
+          : "Manquant";
+
+    item.innerHTML = `
+      <div class="visual-mapping-thumb">
+        ${imageUrl ? `<img src="${html(imageUrl)}" alt="${html(imageKey)}" loading="lazy">` : "<span>-</span>"}
+      </div>
+      <div class="visual-mapping-body">
+        <strong>${html(row.optionLabel)} | ${html(row.choiceLabel)}</strong>
+        <span>${html(row.normalizedChoiceKey)} | attendu: ${html(row.expectedImageFile)}</span>
+        <small>${imageKey ? `Image: ${html(imageKey)}` : "Aucune image trouvee"}</small>
+      </div>
+      <span class="mapping-status">${statusLabel}</span>
+    `;
+    els.vmMappingList.appendChild(item);
+  }
+}
+
+async function loadVisualMappings() {
+  const engineId = els.vmEngineSelect.value;
+  state.visualMappingSummary = null;
+  resetVisualMappingCounts();
+
+  if (!engineId) {
+    els.vmStatus.textContent = "Pret";
+    renderVisualMappingSummary();
+    return;
+  }
+
+  els.vmStatus.textContent = "Chargement";
+  setBusyButtons(true);
+
+  try {
+    const response = await getJson(
+      `/visual-options/admin/engines/${encodeURIComponent(engineId)}/options`
+    );
+    state.visualMappingSummary = response.data;
+    renderVisualMappingSummary();
+    els.vmStatus.textContent = "Pret";
+  } catch (error) {
+    els.vmStatus.textContent = "Erreur";
+    els.vmMappingList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+async function autoMatchVisualMappings() {
+  const engineId = els.vmEngineSelect.value;
+  if (!engineId) return;
+
+  els.vmStatus.textContent = "Auto-match";
+  setBusyButtons(true);
+
+  try {
+    const response = await getJson(
+      `/visual-options/admin/engines/${encodeURIComponent(engineId)}/auto-match`,
+      {
+        method: "POST"
+      }
+    );
+    els.vmImportResult.classList.add("is-visible");
+    els.vmImportResult.classList.remove("is-error");
+    els.vmImportResult.textContent =
+      `${Number(response.data?.mapped || 0).toLocaleString("fr-FR")} mapping(s) cree(s).`;
+    await loadVisualMappings();
+    els.vmStatus.textContent = "Pret";
+  } catch (error) {
+    els.vmStatus.textContent = "Erreur";
+    els.vmImportResult.classList.add("is-visible", "is-error");
+    els.vmImportResult.textContent = error.message;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+function readVisualMappingExportFileName(response) {
+  const disposition = response.headers.get("content-disposition") || "";
+  const match = disposition.match(/filename="([^"]+)"/);
+  return match?.[1] || "visual-option-mappings.xlsx";
+}
+
+async function exportVisualMappings() {
+  const engineId = els.vmEngineSelect.value;
+  if (!engineId) return;
+
+  els.vmStatus.textContent = "Export";
+  setBusyButtons(true);
+
+  try {
+    const response = await fetch(
+      `/visual-options/admin/engines/${encodeURIComponent(engineId)}/export`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }
+      }
+    );
+
+    if (!response.ok) {
+      const message = await readErrorMessage(response);
+      throw new Error(message || `HTTP ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = readVisualMappingExportFileName(response);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    els.vmStatus.textContent = "Pret";
+  } catch (error) {
+    els.vmStatus.textContent = "Erreur";
+    els.vmImportResult.classList.add("is-visible", "is-error");
+    els.vmImportResult.textContent = error.message;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+function renderVisualMappingImportResult(result) {
+  const errors = result?.errors ?? [];
+  els.vmImportResult.classList.add("is-visible");
+  els.vmImportResult.classList.toggle("is-error", errors.length > 0);
+  els.vmImportResult.innerHTML = `
+    <strong>${Number(result?.mapped || 0).toLocaleString("fr-FR")} mapping(s) importe(s), ${Number(result?.skipped || 0).toLocaleString("fr-FR")} ignore(s)</strong>
+    ${errors.length ? `<div class="media-import-items">${errors.slice(0, 5).map((error) => `<span class="media-import-item is-skipped">${html(error)}</span>`).join("")}</div>` : ""}
+  `;
+}
+
+async function importVisualMappings() {
+  const engineId = els.vmEngineSelect.value;
+  const file = els.vmImportFile.files?.[0];
+
+  if (!engineId || !file) {
+    els.vmStatus.textContent = "Erreur";
+    els.vmImportResult.classList.add("is-visible", "is-error");
+    els.vmImportResult.textContent = "Selectionnez un moteur et un fichier Excel.";
+    return;
+  }
+
+  els.vmStatus.textContent = "Import";
+  setBusyButtons(true);
+
+  try {
+    const formData = new FormData();
+    formData.append("workbook", file);
+    const response = await getJson(
+      `/visual-options/admin/engines/${encodeURIComponent(engineId)}/import`,
+      {
+        method: "POST",
+        body: formData
+      }
+    );
+
+    renderVisualMappingImportResult(response.data);
+    els.vmImportFile.value = "";
+    await loadVisualMappings();
+    els.vmStatus.textContent = "Pret";
+  } catch (error) {
+    els.vmStatus.textContent = "Erreur";
+    els.vmImportResult.classList.add("is-visible", "is-error");
+    els.vmImportResult.textContent = error.message;
+  } finally {
+    setBusyButtons(false);
   }
 }
 
@@ -2384,6 +2654,12 @@ els.mediaResetButton.addEventListener("click", resetMediaForm);
 els.mediaAssetList.addEventListener("click", handleMediaAssetAction);
 els.mediaSearch.addEventListener("input", loadMediaAssets);
 els.mediaZipImportButton.addEventListener("click", importMediaZip);
+els.vmEngineSelect.addEventListener("change", loadVisualMappings);
+els.vmLoadButton.addEventListener("click", loadVisualMappings);
+els.vmAutoMatchButton.addEventListener("click", autoMatchVisualMappings);
+els.vmExportButton.addEventListener("click", exportVisualMappings);
+els.vmImportButton.addEventListener("click", importVisualMappings);
+els.vmSearch.addEventListener("input", renderVisualMappingSummary);
 els.pcForm.addEventListener("submit", savePresseroConfig);
 els.pcResetButton.addEventListener("click", resetPresseroConfigForm);
 els.pcConfigList.addEventListener("click", handlePresseroConfigAction);
