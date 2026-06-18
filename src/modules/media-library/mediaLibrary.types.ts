@@ -1,4 +1,4 @@
-export type MediaLibraryModuleStatus = "admin_library";
+export type MediaLibraryModuleStatus = "admin_library" | "zip_import_library";
 
 export type MediaAssetInput = {
   key?: string;
@@ -24,4 +24,18 @@ export type MediaAssetSummary = {
   visualMappingCount: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type MediaAssetZipImportItem = {
+  fileName: string;
+  key: string;
+  url: string;
+  status: "created" | "updated" | "skipped";
+  reason?: string;
+};
+
+export type MediaAssetZipImportResult = {
+  imported: number;
+  skipped: number;
+  items: MediaAssetZipImportItem[];
 };

@@ -55,3 +55,9 @@ For `Prix negocie`, the admin selects organization, PJM engine and negotiated MI
 The `Images` admin section now manages `MediaAsset` records by URL.
 
 This is the shared image/icon library for both future standard PJM visual products and negotiated products. It does not change PJM pricing or Pressero native quantity behavior; it only prepares stable media references that later mappings can attach to real PJM option choices.
+
+## Sprint 32 Media ZIP Import
+
+The media library can import a ZIP of image/icon files and store them under a public middleware URL.
+
+Default storage is `src/public/media/assets`, exposed as `/public/media/assets/...`. On Render, set `MEDIA_ASSETS_DIR` to a persistent disk path such as `/var/data/media/assets` if uploaded files must survive redeployments. The database still stores only `MediaAsset` metadata and URLs.

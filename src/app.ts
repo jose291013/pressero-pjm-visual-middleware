@@ -1,5 +1,6 @@
 import express from "express";
 import path from "node:path";
+import { env } from "./config/env.js";
 import { healthRouter } from "./modules/health/health.routes.js";
 import { mediaLibraryRouter } from "./modules/media-library/mediaLibrary.routes.js";
 import { negotiatedPricesRouter } from "./modules/negotiated-prices/negotiatedPrices.routes.js";
@@ -12,6 +13,7 @@ export function createApp() {
 
   app.disable("x-powered-by");
   app.use(express.json());
+  app.use("/public/media/assets", express.static(env.media.assetsDir));
   app.use("/public", express.static(publicRoot));
 
   app.use("/health", healthRouter);

@@ -39,6 +39,7 @@
     "test:sprint29": "node scripts/test-sprint-29-pjm-organizations.mjs",
     "test:sprint30": "node scripts/test-sprint-30-pressero-negotiated-without-group.mjs",
     "test:sprint31": "node scripts/test-sprint-31-media-library-admin.mjs",
+    "test:sprint32": "node scripts/test-sprint-32-media-zip-import.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",
@@ -51,12 +52,16 @@
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
+    "adm-zip": "^0.5.17",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
-    "express": "^5.0.0"
+    "express": "^5.0.0",
+    "multer": "^2.2.0"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/express": "^5.0.0",
+    "@types/multer": "^2.1.0",
     "@types/node": "^22.0.0",
     "prisma": "^6.0.0",
     "tsx": "^4.0.0",

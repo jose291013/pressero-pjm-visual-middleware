@@ -50,6 +50,9 @@ const els = {
   mediaWidth: document.getElementById("mediaWidth"),
   mediaHeight: document.getElementById("mediaHeight"),
   mediaByteSize: document.getElementById("mediaByteSize"),
+  mediaZipFile: document.getElementById("mediaZipFile"),
+  mediaZipImportButton: document.getElementById("mediaZipImportButton"),
+  mediaImportResult: document.getElementById("mediaImportResult"),
   mediaSaveButton: document.getElementById("mediaSaveButton"),
   mediaResetButton: document.getElementById("mediaResetButton"),
   mediaSearch: document.getElementById("mediaSearch"),
@@ -188,6 +191,7 @@ function setBusyButtons(isBusy) {
   els.npDirectSaveButton.disabled = isBusy;
   els.npAddCombinationButton.disabled = isBusy;
   els.npMultiSaveButton.disabled = isBusy;
+  els.mediaZipImportButton.disabled = isBusy;
   els.mediaSaveButton.disabled = isBusy;
   els.mediaResetButton.disabled = isBusy;
   els.pcSaveButton.disabled = isBusy;
@@ -666,6 +670,59 @@ async function saveMediaAsset(event) {
   } catch (error) {
     els.mediaStatus.textContent = "Erreur";
     els.mediaAssetList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+function renderMediaImportResult(result) {
+  const items = result?.items ?? [];
+  const visibleItems = items.slice(0, 8);
+  const hiddenCount = Math.max(0, items.length - visibleItems.length);
+
+  els.mediaImportResult.classList.add("is-visible");
+  els.mediaImportResult.innerHTML = `
+    <strong>${Number(result?.imported || 0).toLocaleString("fr-FR")} image(s) importee(s), ${Number(result?.skipped || 0).toLocaleString("fr-FR")} ignoree(s)</strong>
+    <div class="media-import-items">
+      ${visibleItems.map((item) => `
+        <span class="media-import-item is-${html(item.status)}">
+          ${html(item.fileName)} -> ${html(item.key || item.reason)}
+        </span>
+      `).join("")}
+      ${hiddenCount ? `<span class="media-import-item">+${hiddenCount.toLocaleString("fr-FR")} autre(s)</span>` : ""}
+    </div>
+  `;
+}
+
+async function importMediaZip() {
+  const file = els.mediaZipFile.files?.[0];
+  if (!file) {
+    els.mediaStatus.textContent = "Erreur";
+    els.mediaImportResult.classList.add("is-visible", "is-error");
+    els.mediaImportResult.textContent = "Selectionnez un fichier ZIP.";
+    return;
+  }
+
+  els.mediaStatus.textContent = "Import ZIP";
+  els.mediaImportResult.classList.remove("is-error");
+  setBusyButtons(true);
+
+  try {
+    const formData = new FormData();
+    formData.append("archive", file);
+    const response = await getJson("/media-library/admin/assets/import-zip", {
+      method: "POST",
+      body: formData
+    });
+
+    renderMediaImportResult(response.data);
+    els.mediaStatus.textContent = "Importe";
+    els.mediaZipFile.value = "";
+    await loadMediaAssets();
+  } catch (error) {
+    els.mediaStatus.textContent = "Erreur";
+    els.mediaImportResult.classList.add("is-visible", "is-error");
+    els.mediaImportResult.textContent = error.message;
   } finally {
     setBusyButtons(false);
   }
@@ -2326,6 +2383,7 @@ els.mediaForm.addEventListener("submit", saveMediaAsset);
 els.mediaResetButton.addEventListener("click", resetMediaForm);
 els.mediaAssetList.addEventListener("click", handleMediaAssetAction);
 els.mediaSearch.addEventListener("input", loadMediaAssets);
+els.mediaZipImportButton.addEventListener("click", importMediaZip);
 els.pcForm.addEventListener("submit", savePresseroConfig);
 els.pcResetButton.addEventListener("click", resetPresseroConfigForm);
 els.pcConfigList.addEventListener("click", handlePresseroConfigAction);

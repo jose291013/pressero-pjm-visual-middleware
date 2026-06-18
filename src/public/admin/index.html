@@ -198,6 +198,21 @@
                     <input id="mediaByteSize" type="number" min="0" step="1" placeholder="octets">
                   </label>
                 </div>
+                <section class="media-import-box">
+                  <label>
+                    <span>Import ZIP</span>
+                    <input id="mediaZipFile" type="file" accept=".zip,application/zip">
+                  </label>
+                  <button class="action-button" id="mediaZipImportButton" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 3v12"></path>
+                      <path d="m7 10 5 5 5-5"></path>
+                      <path d="M5 21h14"></path>
+                    </svg>
+                    Importer ZIP
+                  </button>
+                  <div class="media-import-result" id="mediaImportResult"></div>
+                </section>
                 <div class="panel-footer">
                   <button class="action-button" id="mediaSaveButton" type="submit">
                     <svg viewBox="0 0 24 24" aria-hidden="true">

@@ -47,7 +47,7 @@ assert.match(app, /mediaLibraryRouter/);
 assert.match(app, /app\.use\("\/media-library", mediaLibraryRouter\)/);
 
 const types = await readText("src/modules/media-library/mediaLibrary.types.ts");
-assert.match(types, /MediaLibraryModuleStatus = "admin_library"/);
+assert.match(types, /MediaLibraryModuleStatus = "admin_library" \| "zip_import_library"/);
 assert.match(types, /export type MediaAssetInput/);
 assert.match(types, /export type MediaAssetSummary/);
 
@@ -62,7 +62,7 @@ assert.match(service, /visualOptionMapping\.count/);
 assert.match(service, /Cette image est associee/);
 
 const controller = await readText("src/modules/media-library/mediaLibrary.controller.ts");
-assert.match(controller, /status: "admin_library"/);
+assert.match(controller, /status: "zip_import_library"/);
 assert.match(controller, /getAdminMediaAssets/);
 assert.match(controller, /postAdminMediaAsset/);
 assert.match(controller, /putAdminMediaAsset/);

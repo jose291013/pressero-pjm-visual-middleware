@@ -1,6 +1,14 @@
+import AdmZip from "adm-zip";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import type { Prisma } from "@prisma/client";
+import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
-import type { MediaAssetInput, MediaAssetSummary } from "./mediaLibrary.types.js";
+import type {
+  MediaAssetInput,
+  MediaAssetSummary,
+  MediaAssetZipImportResult
+} from "./mediaLibrary.types.js";
 
 const mediaAssetInclude = {
   _count: {
@@ -13,6 +21,9 @@ const mediaAssetInclude = {
 type MediaAssetRecord = Prisma.MediaAssetGetPayload<{
   include: typeof mediaAssetInclude;
 }>;
+
+const allowedImageExtensions = new Set([".svg", ".webp", ".png", ".jpg", ".jpeg"]);
+const publicMediaAssetsPath = "/public/media/assets";
 
 export function getMediaLibraryModuleName() {
   return "media-library";
@@ -36,6 +47,11 @@ export function inferMimeType(fileNameOrUrl: string) {
   if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
   if (lower.endsWith(".gif")) return "image/gif";
   return "application/octet-stream";
+}
+
+function readBaseNameWithoutExtension(fileNameOrUrl: string) {
+  const fileName = readFileNameFromUrl(fileNameOrUrl);
+  return fileName.replace(/\.[^.]+$/, "");
 }
 
 function serializeMediaAsset(asset: MediaAssetRecord): MediaAssetSummary {
@@ -95,7 +111,7 @@ function normalizeInput(input: MediaAssetInput) {
   }
 
   const fileName = input.fileName?.trim() || readFileNameFromUrl(url);
-  const key = normalizeMediaKey(input.key?.trim() || fileName);
+  const key = normalizeMediaKey(input.key?.trim() || readBaseNameWithoutExtension(fileName));
   if (!key) {
     throw new Error("Cle image obligatoire.");
   }
@@ -203,5 +219,134 @@ export async function deleteMediaAsset(assetId: string) {
     id: asset.id,
     key: asset.key,
     deleted: true
+  };
+}
+
+function readZipEntryFileName(entryName: string) {
+  const normalizedName = entryName.replace(/\\/g, "/");
+  if (!normalizedName || normalizedName.includes("../") || normalizedName.startsWith("/")) {
+    return null;
+  }
+
+  const fileName = normalizedName.split("/").filter(Boolean).pop();
+  return fileName || null;
+}
+
+function normalizeStoredFileName(originalFileName: string) {
+  const extension = path.extname(originalFileName).toLowerCase();
+  if (!allowedImageExtensions.has(extension)) {
+    return null;
+  }
+
+  const key = normalizeMediaKey(originalFileName.replace(/\.[^.]+$/, ""));
+  if (!key) {
+    return null;
+  }
+
+  return {
+    key,
+    fileName: `${key}${extension}`,
+    mimeType: inferMimeType(extension)
+  };
+}
+
+export async function importMediaAssetsZip(
+  buffer: Buffer
+): Promise<MediaAssetZipImportResult> {
+  if (!buffer.length) {
+    throw new Error("Archive ZIP vide.");
+  }
+
+  await mkdir(env.media.assetsDir, {
+    recursive: true
+  });
+
+  const zip = new AdmZip(buffer);
+  const items: MediaAssetZipImportResult["items"] = [];
+  const seenKeys = new Set<string>();
+
+  for (const entry of zip.getEntries()) {
+    if (entry.isDirectory) {
+      continue;
+    }
+
+    const originalFileName = readZipEntryFileName(entry.entryName);
+    if (!originalFileName) {
+      items.push({
+        fileName: entry.entryName,
+        key: "",
+        url: "",
+        status: "skipped",
+        reason: "Nom de fichier invalide."
+      });
+      continue;
+    }
+
+    const normalized = normalizeStoredFileName(originalFileName);
+    if (!normalized) {
+      items.push({
+        fileName: originalFileName,
+        key: "",
+        url: "",
+        status: "skipped",
+        reason: "Extension non supportee."
+      });
+      continue;
+    }
+
+    if (seenKeys.has(normalized.key)) {
+      items.push({
+        fileName: originalFileName,
+        key: normalized.key,
+        url: "",
+        status: "skipped",
+        reason: "Doublon dans le ZIP."
+      });
+      continue;
+    }
+    seenKeys.add(normalized.key);
+
+    const data = entry.getData();
+    const targetPath = path.join(env.media.assetsDir, normalized.fileName);
+    const url = `${publicMediaAssetsPath}/${normalized.fileName}`;
+    const existing = await prisma.mediaAsset.findUnique({
+      where: {
+        key: normalized.key
+      }
+    });
+
+    await writeFile(targetPath, data);
+    await prisma.mediaAsset.upsert({
+      where: {
+        key: normalized.key
+      },
+      create: {
+        key: normalized.key,
+        fileName: normalized.fileName,
+        mimeType: normalized.mimeType,
+        url,
+        altText: originalFileName.replace(/\.[^.]+$/, ""),
+        byteSize: data.length
+      },
+      update: {
+        fileName: normalized.fileName,
+        mimeType: normalized.mimeType,
+        url,
+        byteSize: data.length
+      }
+    });
+
+    items.push({
+      fileName: originalFileName,
+      key: normalized.key,
+      url,
+      status: existing ? "updated" : "created"
+    });
+  }
+
+  return {
+    imported: items.filter((item) => item.status !== "skipped").length,
+    skipped: items.filter((item) => item.status === "skipped").length,
+    items
   };
 }

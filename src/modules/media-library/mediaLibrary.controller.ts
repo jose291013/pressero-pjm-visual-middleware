@@ -3,6 +3,7 @@ import {
   createMediaAsset,
   deleteMediaAsset,
   getMediaLibraryModuleName,
+  importMediaAssetsZip,
   listMediaAssets,
   updateMediaAsset
 } from "./mediaLibrary.service.js";
@@ -11,8 +12,8 @@ import type { MediaAssetInput } from "./mediaLibrary.types.js";
 export function getMediaLibraryStatus(_req: Request, res: Response) {
   res.status(200).json({
     module: getMediaLibraryModuleName(),
-    status: "admin_library",
-    sprint: 31
+    status: "zip_import_library",
+    sprint: 32
   });
 }
 
@@ -72,6 +73,20 @@ export async function deleteAdminMediaAsset(req: Request, res: Response) {
     const result = await deleteMediaAsset(
       readRouteParam(req.params.assetId, "assetId")
     );
+    res.status(200).json({ data: result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(400).json({ error: message });
+  }
+}
+
+export async function postAdminMediaAssetsZip(req: Request, res: Response) {
+  try {
+    if (!req.file?.buffer) {
+      throw new Error("Archive ZIP obligatoire.");
+    }
+
+    const result = await importMediaAssetsZip(req.file.buffer);
     res.status(200).json({ data: result });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

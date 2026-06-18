@@ -1148,6 +1148,61 @@ tbody tr.is-selected {
   gap: 8px;
 }
 
+.media-import-box {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.media-import-box .action-button {
+  justify-content: center;
+}
+
+.media-import-result {
+  display: none;
+  border: 1px solid #94d3b0;
+  border-radius: 8px;
+  background: #f2fbf6;
+  color: #17663b;
+  padding: 9px;
+  font-size: 12px;
+}
+
+.media-import-result.is-visible {
+  display: grid;
+  gap: 7px;
+}
+
+.media-import-result.is-error {
+  border-color: #f0a3a3;
+  background: #fff5f5;
+  color: #b42318;
+}
+
+.media-import-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.media-import-item {
+  max-width: 100%;
+  padding: 4px 7px;
+  border: 1px solid #cbd5df;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #26313d;
+  overflow-wrap: anywhere;
+}
+
+.media-import-item.is-skipped {
+  border-color: #f0c36d;
+  background: #fff8e8;
+}
+
 .media-search {
   flex: 0 0 auto;
   padding: 12px 14px;
