@@ -723,7 +723,10 @@ function renderMediaImportResult(result) {
   `;
 }
 
-async function importMediaZip() {
+async function importMediaZip(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+
   const file = els.mediaZipFile.files?.[0];
   if (!file) {
     els.mediaStatus.textContent = "Erreur";
@@ -745,9 +748,10 @@ async function importMediaZip() {
     });
 
     renderMediaImportResult(response.data);
-    els.mediaStatus.textContent = "Importe";
     els.mediaZipFile.value = "";
+    resetMediaForm();
     await loadMediaAssets();
+    els.mediaStatus.textContent = "Importe";
   } catch (error) {
     els.mediaStatus.textContent = "Erreur";
     els.mediaImportResult.classList.add("is-visible", "is-error");

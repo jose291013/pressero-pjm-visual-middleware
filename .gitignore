@@ -5,3 +5,5 @@ dist/
 npm-debug.log*
 .DS_Store
 docs/reference/*.zip
+src/public/media/assets/*
+!src/public/media/assets/.gitkeep

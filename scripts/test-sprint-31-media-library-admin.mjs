@@ -88,7 +88,7 @@ assert.match(js, /renderMediaAssets/);
 assert.match(js, /saveMediaAsset/);
 assert.match(js, /deleteMediaAssetById/);
 assert.match(js, /\/media-library\/admin\/assets/);
-assert.match(js, /viewName === "images"/);
+assert.match(js, /images: "Images"/);
 
 const css = await readText("src/public/admin/admin.css");
 assert.match(css, /\.media-library-layout/);
