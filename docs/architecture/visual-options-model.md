@@ -46,3 +46,31 @@ PjmOptionChoice.id -> VisualOptionMapping.mediaAssetId -> MediaAsset.publicUrl
 ```
 
 The mapping layer is shared by standard PJM pricing products and negotiated price products.
+
+## Sprint 36 Public Visual Config
+
+The public Pressero visual configuration uses saved mappings to produce product-specific JSON.
+
+The endpoint resolves:
+
+```text
+Pressero MIS Product ID
+-> PresseroProductConfig
+-> PjmPriceEngine
+-> PjmOption / PjmOptionChoice
+-> VisualOptionMapping
+-> MediaAsset
+```
+
+Only mapped visual choices are returned. This keeps the payload small and avoids exposing the full PJM catalog to the Pressero product page.
+
+Each returned choice keeps the real PJM identifiers and value:
+
+```text
+choice.id
+choice.pjmId
+choice.value
+choice.image.url
+```
+
+The future Pressero script must use these values to update the real PJM fields and trigger the native `change` event, not calculate prices in JavaScript.

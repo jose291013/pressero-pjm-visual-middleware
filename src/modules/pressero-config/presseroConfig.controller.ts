@@ -3,6 +3,7 @@ import {
   createPresseroProductConfig,
   deletePresseroProductConfig,
   getPresseroConfigModuleName,
+  getPublicPresseroVisualProductConfig,
   listPresseroProductConfigs,
   updatePresseroProductConfig
 } from "./presseroConfig.service.js";
@@ -11,8 +12,8 @@ import type { PresseroProductConfigInput } from "./presseroConfig.types.js";
 export function getPresseroConfigStatus(_req: Request, res: Response) {
   res.status(200).json({
     module: getPresseroConfigModuleName(),
-    status: "middleware_generated_product_misid",
-    sprint: 27
+    status: "public_visual_product_config",
+    sprint: 36
   });
 }
 
@@ -32,10 +33,30 @@ function readRouteParam(value: string | string[] | undefined, name: string) {
   return value;
 }
 
+function readPublicBaseUrl(req: Request) {
+  const forwardedProto = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProto || req.protocol;
+  const host = req.get("host") || "";
+  return host ? `${protocol}://${host}` : "";
+}
+
 export async function getPresseroProductConfigs(_req: Request, res: Response) {
   try {
     const configs = await listPresseroProductConfigs();
     res.status(200).json({ data: configs });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(400).json({ error: message });
+  }
+}
+
+export async function getPublicPresseroVisualConfig(req: Request, res: Response) {
+  try {
+    const config = await getPublicPresseroVisualProductConfig(
+      readRouteParam(req.params.misProductId, "misProductId"),
+      readPublicBaseUrl(req)
+    );
+    res.status(200).json({ data: config });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     res.status(400).json({ error: message });

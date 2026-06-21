@@ -72,3 +72,17 @@ Its admin endpoints let the backoffice build the stable relationship between syn
 - negotiated products will use the same image/icon library while the middleware resolves negotiated MIS IDs and tiers.
 
 The Excel export/import flow is intended for bulk preparation. Image files can be imported as a ZIP, then option mappings can be exported, filled with `MediaAsset.key` values and imported back.
+
+## Sprint 36 Public Visual Product Config
+
+The middleware now exposes a public product visual configuration endpoint:
+
+```text
+GET /pressero-config/public/products/:misProductId/visual-config
+```
+
+The `MIS Product ID price 1` value saved in Pressero resolves to a `PresseroProductConfig`. For standard PJM pricing (`pjmLive`), the endpoint returns a compact JSON containing the organization, PJM engine, price group and only visual options with mapped images.
+
+Image URLs that are already absolute, such as S3 or CloudFront URLs, are returned unchanged. Local `/public/media/assets/...` URLs are expanded using the request base URL, which allows Render to serve absolute image URLs.
+
+This endpoint does not calculate price. It prepares the visual layer; PJM/Pressero native fields and recalculation remain authoritative.

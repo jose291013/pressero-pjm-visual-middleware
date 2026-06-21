@@ -4,7 +4,9 @@ import { prisma } from "../../config/prisma.js";
 import type {
   PresseroPricingMode,
   PresseroProductConfigInput,
-  PresseroProductConfigSummary
+  PresseroProductConfigSummary,
+  PresseroVisualProductConfig,
+  PresseroVisualProductOption
 } from "./presseroConfig.types.js";
 
 const productConfigInclude = {
@@ -14,6 +16,32 @@ const productConfigInclude = {
 
 type ProductConfigRecord = Prisma.PresseroProductConfigGetPayload<{
   include: typeof productConfigInclude;
+}>;
+
+const publicVisualConfigInclude = {
+  priceEngine: {
+    include: {
+      options: {
+        include: {
+          choices: {
+            include: {
+              visualMapping: {
+                include: {
+                  mediaAsset: true
+                }
+              }
+            },
+            orderBy: [{ sortOrder: "asc" }, { name: "asc" }]
+          }
+        },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }]
+      }
+    }
+  }
+} satisfies Prisma.PresseroProductConfigInclude;
+
+type PublicVisualConfigRecord = Prisma.PresseroProductConfigGetPayload<{
+  include: typeof publicVisualConfigInclude;
 }>;
 
 export function getPresseroConfigModuleName() {
@@ -185,6 +213,75 @@ function readConfigId(configId: string) {
   return id;
 }
 
+function readMisProductId(misProductId: string) {
+  const id = misProductId.trim();
+  if (!id) {
+    throw new Error("MIS Product ID public requis.");
+  }
+  return id;
+}
+
+function buildPublicUrl(url: string, publicBaseUrl: string) {
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+
+  if (!publicBaseUrl) {
+    return url;
+  }
+
+  try {
+    return new URL(url, publicBaseUrl).toString();
+  } catch (_error) {
+    return url;
+  }
+}
+
+function serializeVisualOptions(
+  config: PublicVisualConfigRecord,
+  publicBaseUrl: string
+): PresseroVisualProductOption[] {
+  return config.priceEngine.options
+    .map((option) => {
+      const choices = option.choices
+        .filter((choice) => choice.isActive && choice.visualMapping?.isEnabled)
+        .map((choice) => {
+          const asset = choice.visualMapping?.mediaAsset;
+          if (!asset) return null;
+
+          return {
+            id: choice.id,
+            pjmId: choice.pjmId,
+            value: choice.value,
+            label: choice.name,
+            sortOrder: choice.sortOrder,
+            image: {
+              key: asset.key,
+              url: buildPublicUrl(asset.url, publicBaseUrl),
+              altText: asset.altText,
+              mimeType: asset.mimeType,
+              width: asset.width,
+              height: asset.height
+            }
+          };
+        })
+        .filter((choice): choice is NonNullable<typeof choice> => Boolean(choice));
+
+      if (!choices.length) return null;
+
+      return {
+        id: option.id,
+        pjmId: option.pjmId,
+        name: option.name,
+        label: option.displayName || option.name,
+        optionType: option.optionType,
+        sortOrder: option.sortOrder,
+        choices
+      };
+    })
+    .filter((option): option is PresseroVisualProductOption => Boolean(option));
+}
+
 export async function listPresseroProductConfigs() {
   const configs = await prisma.presseroProductConfig.findMany({
     where: {
@@ -197,6 +294,54 @@ export async function listPresseroProductConfigs() {
   });
 
   return configs.map(serializeProductConfig);
+}
+
+export async function getPublicPresseroVisualProductConfig(
+  misProductId: string,
+  publicBaseUrl: string
+): Promise<PresseroVisualProductConfig> {
+  const config = await prisma.presseroProductConfig.findFirst({
+    where: {
+      misProductId: readMisProductId(misProductId),
+      isActive: true
+    },
+    include: publicVisualConfigInclude
+  });
+
+  if (!config) {
+    throw new Error("Configuration Pressero introuvable ou inactive.");
+  }
+
+  if (config.pricingMode !== "pjmLive") {
+    throw new Error("Cette configuration n'utilise pas le mode PJM standard.");
+  }
+
+  const options = serializeVisualOptions(config, publicBaseUrl);
+  const visualChoices = options.reduce((total, option) => {
+    return total + option.choices.length;
+  }, 0);
+
+  return {
+    misProductId: config.misProductId,
+    name: config.name,
+    pricingMode: "pjmLive",
+    organizationIntegrationId: config.organizationIntegrationId,
+    organizationName: config.organizationName,
+    priceEngine: {
+      id: config.priceEngine.id,
+      pjmId: config.priceEngine.pjmId,
+      name: config.priceEngine.name
+    },
+    priceGroup: {
+      enginePriceGroupIntegrationId: config.enginePriceGroupIntegrationId,
+      name: config.priceGroupName
+    },
+    options,
+    counts: {
+      visualOptions: options.length,
+      visualChoices
+    }
+  };
 }
 
 export async function createPresseroProductConfig(

@@ -3,6 +3,7 @@ import {
   deletePresseroProductConfigById,
   getPresseroConfigStatus,
   getPresseroProductConfigs,
+  getPublicPresseroVisualConfig,
   postPresseroProductConfig,
   putPresseroProductConfig
 } from "./presseroConfig.controller.js";
@@ -10,6 +11,10 @@ import {
 export const presseroConfigRouter = Router();
 
 presseroConfigRouter.get("/", getPresseroConfigStatus);
+presseroConfigRouter.get(
+  "/public/products/:misProductId/visual-config",
+  getPublicPresseroVisualConfig
+);
 presseroConfigRouter.get("/admin/product-configs", getPresseroProductConfigs);
 presseroConfigRouter.post("/admin/product-configs", postPresseroProductConfig);
 presseroConfigRouter.put(

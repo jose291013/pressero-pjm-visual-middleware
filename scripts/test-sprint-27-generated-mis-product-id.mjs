@@ -52,8 +52,8 @@ assert.match(service, /normalized\.misProductId \|\| await generateMiddlewarePro
 assert.match(service, /misProductId:\s*normalized\.misProductId \|\| existing\.misProductId/);
 
 const controller = await readText("src/modules/pressero-config/presseroConfig.controller.ts");
-assert.match(controller, /middleware_generated_product_misid/);
-assert.match(controller, /sprint:\s*27/);
+assert.match(controller, /getPresseroConfigStatus/);
+assert.match(controller, /getPresseroProductConfigs/);
 
 const html = await readText("src/public/admin/index.html");
 assert.match(html, /MIS Product ID price 1/);

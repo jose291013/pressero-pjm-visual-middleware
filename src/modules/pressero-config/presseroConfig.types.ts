@@ -31,3 +31,51 @@ export type PresseroProductConfigSummary = {
   isActive: boolean;
   updatedAt: string;
 };
+
+export type PresseroVisualProductChoice = {
+  id: string;
+  pjmId: string;
+  value: string;
+  label: string;
+  sortOrder: number;
+  image: {
+    key: string;
+    url: string;
+    altText: string | null;
+    mimeType: string;
+    width: number | null;
+    height: number | null;
+  };
+};
+
+export type PresseroVisualProductOption = {
+  id: string;
+  pjmId: string;
+  name: string;
+  label: string;
+  optionType: string | null;
+  sortOrder: number;
+  choices: PresseroVisualProductChoice[];
+};
+
+export type PresseroVisualProductConfig = {
+  misProductId: string;
+  name: string;
+  pricingMode: "pjmLive";
+  organizationIntegrationId: string;
+  organizationName: string | null;
+  priceEngine: {
+    id: string;
+    pjmId: string;
+    name: string;
+  };
+  priceGroup: {
+    enginePriceGroupIntegrationId: string;
+    name: string | null;
+  };
+  options: PresseroVisualProductOption[];
+  counts: {
+    visualOptions: number;
+    visualChoices: number;
+  };
+};
