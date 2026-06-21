@@ -671,11 +671,21 @@ async function loadMediaAssets() {
 
 async function saveMediaAsset(event) {
   event.preventDefault();
+  const assetId = els.mediaAssetId.value;
+  if (!assetId && !els.mediaUrl.value.trim()) {
+    els.mediaStatus.textContent = "Pret";
+    els.mediaImportResult.classList.add("is-visible");
+    els.mediaImportResult.classList.remove("is-error");
+    els.mediaImportResult.innerHTML =
+      "<strong>Les images importees par ZIP sont deja enregistrees.</strong>";
+    await loadMediaAssets();
+    return;
+  }
+
   els.mediaStatus.textContent = "Enregistrement";
   setBusyButtons(true);
 
   try {
-    const assetId = els.mediaAssetId.value;
     const response = await getJson(
       assetId
         ? `/media-library/admin/assets/${encodeURIComponent(assetId)}`
@@ -698,7 +708,8 @@ async function saveMediaAsset(event) {
     await loadMediaAssets();
   } catch (error) {
     els.mediaStatus.textContent = "Erreur";
-    els.mediaAssetList.innerHTML = `<div class="error-state">${html(error.message)}</div>`;
+    els.mediaImportResult.classList.add("is-visible", "is-error");
+    els.mediaImportResult.textContent = error.message;
   } finally {
     setBusyButtons(false);
   }

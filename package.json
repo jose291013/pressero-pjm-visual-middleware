@@ -42,6 +42,7 @@
     "test:sprint32": "node scripts/test-sprint-32-media-zip-import.mjs",
     "test:sprint33": "node scripts/test-sprint-33-visual-option-mapping-admin.mjs",
     "test:sprint34": "node scripts/test-sprint-34-media-zip-import-ux.mjs",
+    "test:sprint35": "node scripts/test-sprint-35-media-manual-save-guard.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",
