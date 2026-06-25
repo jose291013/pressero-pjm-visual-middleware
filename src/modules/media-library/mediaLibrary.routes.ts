@@ -5,6 +5,7 @@ import {
   getAdminMediaAssets,
   getMediaLibraryStatus,
   postAdminMediaAsset,
+  postAdminMediaAssetsUrlImport,
   postAdminMediaAssetsZip,
   putAdminMediaAsset
 } from "./mediaLibrary.controller.js";
@@ -25,5 +26,6 @@ mediaLibraryRouter.post(
   upload.single("archive"),
   postAdminMediaAssetsZip
 );
+mediaLibraryRouter.post("/admin/assets/import-urls", postAdminMediaAssetsUrlImport);
 mediaLibraryRouter.put("/admin/assets/:assetId", putAdminMediaAsset);
 mediaLibraryRouter.delete("/admin/assets/:assetId", deleteAdminMediaAsset);

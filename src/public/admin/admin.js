@@ -53,6 +53,9 @@ const els = {
   mediaByteSize: document.getElementById("mediaByteSize"),
   mediaZipFile: document.getElementById("mediaZipFile"),
   mediaZipImportButton: document.getElementById("mediaZipImportButton"),
+  mediaUrlBase: document.getElementById("mediaUrlBase"),
+  mediaUrlFiles: document.getElementById("mediaUrlFiles"),
+  mediaUrlImportButton: document.getElementById("mediaUrlImportButton"),
   mediaImportResult: document.getElementById("mediaImportResult"),
   mediaSaveButton: document.getElementById("mediaSaveButton"),
   mediaResetButton: document.getElementById("mediaResetButton"),
@@ -208,6 +211,7 @@ function setBusyButtons(isBusy) {
   els.npAddCombinationButton.disabled = isBusy;
   els.npMultiSaveButton.disabled = isBusy;
   els.mediaZipImportButton.disabled = isBusy;
+  els.mediaUrlImportButton.disabled = isBusy;
   els.mediaSaveButton.disabled = isBusy;
   els.mediaResetButton.disabled = isBusy;
   els.vmLoadButton.disabled = isBusy;
@@ -760,6 +764,48 @@ async function importMediaZip(event) {
 
     renderMediaImportResult(response.data);
     els.mediaZipFile.value = "";
+    resetMediaForm();
+    await loadMediaAssets();
+    els.mediaStatus.textContent = "Importe";
+  } catch (error) {
+    els.mediaStatus.textContent = "Erreur";
+    els.mediaImportResult.classList.add("is-visible", "is-error");
+    els.mediaImportResult.textContent = error.message;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+async function importMediaUrls(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+
+  const baseUrl = els.mediaUrlBase.value.trim();
+  const files = els.mediaUrlFiles.value.trim();
+  if (!baseUrl || !files) {
+    els.mediaStatus.textContent = "Erreur";
+    els.mediaImportResult.classList.add("is-visible", "is-error");
+    els.mediaImportResult.textContent = "URL de base et liste de fichiers obligatoires.";
+    return;
+  }
+
+  els.mediaStatus.textContent = "Import URLs";
+  els.mediaImportResult.classList.remove("is-error");
+  setBusyButtons(true);
+
+  try {
+    const response = await getJson("/media-library/admin/assets/import-urls", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        baseUrl,
+        files
+      })
+    });
+
+    renderMediaImportResult(response.data);
     resetMediaForm();
     await loadMediaAssets();
     els.mediaStatus.textContent = "Importe";
@@ -2669,6 +2715,7 @@ els.mediaResetButton.addEventListener("click", resetMediaForm);
 els.mediaAssetList.addEventListener("click", handleMediaAssetAction);
 els.mediaSearch.addEventListener("input", loadMediaAssets);
 els.mediaZipImportButton.addEventListener("click", importMediaZip);
+els.mediaUrlImportButton.addEventListener("click", importMediaUrls);
 els.vmEngineSelect.addEventListener("change", loadVisualMappings);
 els.vmLoadButton.addEventListener("click", loadVisualMappings);
 els.vmAutoMatchButton.addEventListener("click", autoMatchVisualMappings);

@@ -39,3 +39,10 @@ export type MediaAssetZipImportResult = {
   skipped: number;
   items: MediaAssetZipImportItem[];
 };
+
+export type MediaAssetUrlImportInput = {
+  baseUrl?: string;
+  files?: string[] | string;
+};
+
+export type MediaAssetUrlImportResult = MediaAssetZipImportResult;

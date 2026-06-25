@@ -6,6 +6,8 @@ import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
 import type {
   MediaAssetInput,
+  MediaAssetUrlImportInput,
+  MediaAssetUrlImportResult,
   MediaAssetSummary,
   MediaAssetZipImportResult
 } from "./mediaLibrary.types.js";
@@ -250,6 +252,74 @@ function normalizeStoredFileName(originalFileName: string) {
   };
 }
 
+function readUrlImportFiles(files: MediaAssetUrlImportInput["files"]) {
+  if (Array.isArray(files)) {
+    return files;
+  }
+
+  if (typeof files === "string") {
+    return files
+      .split(/[\n,;]+/)
+      .map((fileName) => fileName.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function normalizeExternalFileName(fileName: string) {
+  const normalizedName = fileName.trim().replace(/\\/g, "/");
+  if (!normalizedName || normalizedName.includes("../") || normalizedName.startsWith("/")) {
+    return null;
+  }
+
+  const extension = path.extname(normalizedName).toLowerCase();
+  if (!allowedImageExtensions.has(extension)) {
+    return null;
+  }
+
+  const nameOnly = normalizedName.split("/").filter(Boolean).pop() ?? "";
+  const key = normalizeMediaKey(nameOnly.replace(/\.[^.]+$/, ""));
+  if (!key) {
+    return null;
+  }
+
+  return {
+    key,
+    fileName: nameOnly,
+    pathName: normalizedName
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => encodeURIComponent(segment))
+      .join("/"),
+    mimeType: inferMimeType(nameOnly)
+  };
+}
+
+function normalizeBaseUrl(baseUrl: string) {
+  const trimmed = baseUrl.trim();
+  if (!trimmed) {
+    throw new Error("URL de base obligatoire.");
+  }
+
+  if (!trimmed.startsWith("https://") && !trimmed.startsWith("http://")) {
+    throw new Error("URL de base invalide. Utilisez une URL http(s).");
+  }
+
+  const parsed = new URL(trimmed);
+  parsed.hash = "";
+  parsed.search = "";
+  if (!parsed.pathname.endsWith("/")) {
+    parsed.pathname = `${parsed.pathname}/`;
+  }
+
+  return parsed.toString();
+}
+
+function buildExternalAssetUrl(baseUrl: string, filePath: string) {
+  return new URL(filePath, baseUrl).toString();
+}
+
 export async function importMediaAssetsZip(
   buffer: Buffer
 ): Promise<MediaAssetZipImportResult> {
@@ -338,6 +408,83 @@ export async function importMediaAssetsZip(
 
     items.push({
       fileName: originalFileName,
+      key: normalized.key,
+      url,
+      status: existing ? "updated" : "created"
+    });
+  }
+
+  return {
+    imported: items.filter((item) => item.status !== "skipped").length,
+    skipped: items.filter((item) => item.status === "skipped").length,
+    items
+  };
+}
+
+export async function importMediaAssetsFromUrls(
+  input: MediaAssetUrlImportInput
+): Promise<MediaAssetUrlImportResult> {
+  const baseUrl = normalizeBaseUrl(input.baseUrl ?? "");
+  const files = readUrlImportFiles(input.files);
+  if (!files.length) {
+    throw new Error("Liste de fichiers obligatoire.");
+  }
+
+  const items: MediaAssetUrlImportResult["items"] = [];
+  const seenKeys = new Set<string>();
+
+  for (const fileName of files) {
+    const normalized = normalizeExternalFileName(fileName);
+    if (!normalized) {
+      items.push({
+        fileName,
+        key: "",
+        url: "",
+        status: "skipped",
+        reason: "Nom de fichier ou extension invalide."
+      });
+      continue;
+    }
+
+    if (seenKeys.has(normalized.key)) {
+      items.push({
+        fileName,
+        key: normalized.key,
+        url: "",
+        status: "skipped",
+        reason: "Doublon dans la liste."
+      });
+      continue;
+    }
+    seenKeys.add(normalized.key);
+
+    const url = buildExternalAssetUrl(baseUrl, normalized.pathName);
+    const existing = await prisma.mediaAsset.findUnique({
+      where: {
+        key: normalized.key
+      }
+    });
+
+    await prisma.mediaAsset.upsert({
+      where: {
+        key: normalized.key
+      },
+      create: {
+        key: normalized.key,
+        fileName: normalized.fileName,
+        mimeType: normalized.mimeType,
+        url,
+        altText: normalized.fileName.replace(/\.[^.]+$/, "")
+      },
+      update: {
+        fileName: normalized.fileName,
+        mimeType: normalized.mimeType,
+        url
+      }
+    });
+
+    items.push({
+      fileName,
       key: normalized.key,
       url,
       status: existing ? "updated" : "created"

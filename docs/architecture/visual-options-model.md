@@ -74,3 +74,20 @@ choice.image.url
 ```
 
 The future Pressero script must use these values to update the real PJM fields and trigger the native `change` event, not calculate prices in JavaScript.
+
+## Sprint 37 Media URL Import
+
+The media library can now import externally hosted images from a base URL, such as a Render Static Site.
+
+This flow is intended for deployments where images should be served by a static/CDN-like host and the middleware should only store metadata. The admin provides:
+
+```text
+base URL: https://mon-site-static.onrender.com/
+files:
+  couche-brillant-135-gr.webp
+  standard.webp
+```
+
+The middleware creates or updates `MediaAsset` rows by normalized key and stores the absolute image URL. Existing `VisualOptionMapping` records remain stable because they reference `MediaAsset.id`, not the image file on disk.
+
+This Render Static flow does not change the V22.1 Pressero behavior: visual choices still update real PJM/Pressero fields and PJM remains responsible for pricing and cart behavior.

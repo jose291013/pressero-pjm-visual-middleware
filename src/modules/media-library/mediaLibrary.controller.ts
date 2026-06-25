@@ -3,6 +3,7 @@ import {
   createMediaAsset,
   deleteMediaAsset,
   getMediaLibraryModuleName,
+  importMediaAssetsFromUrls,
   importMediaAssetsZip,
   listMediaAssets,
   updateMediaAsset
@@ -87,6 +88,16 @@ export async function postAdminMediaAssetsZip(req: Request, res: Response) {
     }
 
     const result = await importMediaAssetsZip(req.file.buffer);
+    res.status(200).json({ data: result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    res.status(400).json({ error: message });
+  }
+}
+
+export async function postAdminMediaAssetsUrlImport(req: Request, res: Response) {
+  try {
+    const result = await importMediaAssetsFromUrls(req.body ?? {});
     res.status(200).json({ data: result });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -1131,15 +1131,25 @@ tbody tr.is-selected {
 }
 
 .media-form input,
+.media-form textarea,
 .media-search input {
   width: 100%;
   min-width: 0;
-  height: 36px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: #ffffff;
   color: var(--ink);
   padding: 8px 10px;
+}
+
+.media-form input,
+.media-search input {
+  height: 36px;
+}
+
+.media-form textarea {
+  min-height: 108px;
+  resize: vertical;
 }
 
 .media-dimensions {
