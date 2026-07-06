@@ -123,3 +123,13 @@ ID, Label, Options[{ Key, Value }]
 ```
 
 The price response remains diagnostic until the next pricing sprint replaces it with PJM `options and price` for standard products and negotiated tier resolution for negotiated products.
+
+## Sprint 41 Pressero Pricing Render Diagnostics
+
+The Pressero pricing provider now logs each request and response branch with the prefix:
+
+```text
+[pressero-pricing]
+```
+
+These logs expose the detected mode, path, productId, quantity, body keys, query keys, pricing parameter keys and option counts. They are intended to identify whether Pressero calls the options branch, sends the MIS Product ID, or receives an empty option set.

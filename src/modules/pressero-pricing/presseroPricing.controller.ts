@@ -3,6 +3,7 @@ import {
   buildPresseroOptionsForProduct,
   buildDiagnosticPresseroPricingPayload,
   buildDiagnosticPresseroPricingResponse,
+  describePresseroPricingRequest,
   getPresseroPricingModuleName,
   readPresseroProductId,
   readPresseroProviderMode
@@ -15,6 +16,13 @@ function readBody(value: unknown): PresseroPricingRequestBody {
   }
 
   return value as PresseroPricingRequestBody;
+}
+
+function logPresseroPricingEvent(
+  event: string,
+  payload: Record<string, unknown>
+) {
+  console.info(`[pressero-pricing] ${event} ${JSON.stringify(payload)}`);
 }
 
 export function getPresseroPricingStatus(_req: Request, res: Response) {
@@ -31,11 +39,18 @@ export function getPresseroPricingStatus(_req: Request, res: Response) {
 
 async function sendPresseroPricingJson(req: Request, res: Response) {
   const body = readBody(req.body);
+  const query = req.query as Record<string, unknown>;
   const mode = readPresseroProviderMode(
     body,
-    req.query as Record<string, unknown>,
+    query,
     req.path
   );
+  const requestSummary = describePresseroPricingRequest(body, query, req.path);
+
+  logPresseroPricingEvent("request", {
+    method: req.method,
+    ...requestSummary
+  });
 
   if (req.query.debug === "1" || req.query.debug === "true") {
     res.status(200).json(buildDiagnosticPresseroPricingPayload(body));
@@ -43,19 +58,52 @@ async function sendPresseroPricingJson(req: Request, res: Response) {
   }
 
   if (mode === "options") {
-    const productId = readPresseroProductId(body, req.query as Record<string, unknown>);
+    const productId = readPresseroProductId(body, query);
     if (!productId) {
+      logPresseroPricingEvent("options-error", {
+        reason: "missing_product_id",
+        ...requestSummary
+      });
+
       res.status(400).json({
         Error: "MIS Product ID manquant. Pressero doit envoyer productID."
       });
       return;
     }
 
-    res.status(200).json(await buildPresseroOptionsForProduct(productId));
-    return;
+    try {
+      const options = await buildPresseroOptionsForProduct(productId);
+      logPresseroPricingEvent("options-response", {
+        productId,
+        optionCount: options.length,
+        choiceCount: options.reduce((total, option) => total + option.Options.length, 0)
+      });
+
+      res.status(200).json(options);
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erreur inconnue.";
+      logPresseroPricingEvent("options-error", {
+        productId,
+        message
+      });
+
+      res.status(404).json({
+        Error: message
+      });
+      return;
+    }
   }
 
-  res.status(200).json(buildDiagnosticPresseroPricingResponse(body));
+  const pricing = buildDiagnosticPresseroPricingResponse(body);
+  logPresseroPricingEvent("price-response", {
+    productId: requestSummary.productId,
+    quantity: requestSummary.quantity,
+    price: pricing.Price,
+    selectedOptionCount: requestSummary.selectedOptionCount
+  });
+
+  res.status(200).json(pricing);
 }
 
 export async function getPresseroPricingJson(req: Request, res: Response) {
@@ -68,14 +116,45 @@ export async function postPresseroPricingJson(req: Request, res: Response) {
 
 export async function getPresseroOptionsForProduct(req: Request, res: Response) {
   const body = readBody(req.body);
-  const productId = readPresseroProductId(body, req.query as Record<string, unknown>);
+  const query = req.query as Record<string, unknown>;
+  const productId = readPresseroProductId(body, query);
+  const requestSummary = describePresseroPricingRequest(body, query, req.path);
+
+  logPresseroPricingEvent("request", {
+    method: req.method,
+    ...requestSummary
+  });
 
   if (!productId) {
+    logPresseroPricingEvent("options-error", {
+      reason: "missing_product_id",
+      ...requestSummary
+    });
+
     res.status(400).json({
       Error: "MIS Product ID manquant. Pressero doit envoyer productID."
     });
     return;
   }
 
-  res.status(200).json(await buildPresseroOptionsForProduct(productId));
+  try {
+    const options = await buildPresseroOptionsForProduct(productId);
+    logPresseroPricingEvent("options-response", {
+      productId,
+      optionCount: options.length,
+      choiceCount: options.reduce((total, option) => total + option.Options.length, 0)
+    });
+
+    res.status(200).json(options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erreur inconnue.";
+    logPresseroPricingEvent("options-error", {
+      productId,
+      message
+    });
+
+    res.status(404).json({
+      Error: message
+    });
+  }
 }

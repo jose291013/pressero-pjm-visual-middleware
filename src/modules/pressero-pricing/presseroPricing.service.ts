@@ -104,6 +104,26 @@ export function readPresseroPricingQuantity(body: PresseroPricingRequestBody) {
   );
 }
 
+export function describePresseroPricingRequest(
+  body: PresseroPricingRequestBody,
+  query: Record<string, unknown> = {},
+  path = ""
+) {
+  const parameters = readPricingParameters(body);
+  const selectedOptions = readSelectedOptions(body);
+
+  return {
+    path,
+    mode: readPresseroProviderMode(body, query, path),
+    productId: readPresseroProductId(body, query),
+    quantity: readPresseroPricingQuantity(body),
+    bodyKeys: Object.keys(body),
+    queryKeys: Object.keys(query),
+    pricingParameterKeys: Object.keys(parameters),
+    selectedOptionCount: selectedOptions.length
+  };
+}
+
 export function readPresseroProviderMode(
   body: PresseroPricingRequestBody,
   query: Record<string, unknown> = {},
