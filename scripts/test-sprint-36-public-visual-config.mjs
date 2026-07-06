@@ -27,7 +27,7 @@ const types = read("src/modules/pressero-config/presseroConfig.types.ts");
   "PresseroVisualProductChoice",
   "PresseroVisualProductOption",
   "PresseroVisualProductConfig",
-  'pricingMode: "pjmLive"',
+  "pricingMode: PresseroPricingMode",
   "image:"
 ].forEach((needle) => assertIncludes(types, needle, "presseroConfig.types.ts"));
 
@@ -39,7 +39,7 @@ const service = read("src/modules/pressero-config/presseroConfig.service.ts");
   "serializeVisualOptions",
   "visualMapping",
   "mediaAsset",
-  "config.pricingMode !== \"pjmLive\"",
+  "pricingMode: config.pricingMode",
   "counts:"
 ].forEach((needle) => assertIncludes(service, needle, "presseroConfig.service.ts"));
 

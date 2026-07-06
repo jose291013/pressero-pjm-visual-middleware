@@ -312,10 +312,6 @@ export async function getPublicPresseroVisualProductConfig(
     throw new Error("Configuration Pressero introuvable ou inactive.");
   }
 
-  if (config.pricingMode !== "pjmLive") {
-    throw new Error("Cette configuration n'utilise pas le mode PJM standard.");
-  }
-
   const options = serializeVisualOptions(config, publicBaseUrl);
   const visualChoices = options.reduce((total, option) => {
     return total + option.choices.length;
@@ -324,7 +320,7 @@ export async function getPublicPresseroVisualProductConfig(
   return {
     misProductId: config.misProductId,
     name: config.name,
-    pricingMode: "pjmLive",
+    pricingMode: config.pricingMode,
     organizationIntegrationId: config.organizationIntegrationId,
     organizationName: config.organizationName,
     priceEngine: {

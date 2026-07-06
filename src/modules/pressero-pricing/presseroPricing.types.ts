@@ -49,6 +49,7 @@ export type PresseroPricingRequestBody = {
 };
 
 export type PresseroPricingJsonResponse = {
+  Error?: string | null;
   Price: number;
   Cost: number;
   Weight: number;
@@ -60,6 +61,7 @@ export type PresseroPricingJsonResponse = {
   weight: number;
   success: boolean;
   Options: PresseroPricingParameterOption[];
+  source?: "diagnostic" | "pjmLive" | "negotiated";
 };
 
 export type PresseroPricingDebugResponse = {

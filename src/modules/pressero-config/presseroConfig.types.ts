@@ -61,7 +61,7 @@ export type PresseroVisualProductOption = {
 export type PresseroVisualProductConfig = {
   misProductId: string;
   name: string;
-  pricingMode: "pjmLive";
+  pricingMode: PresseroPricingMode;
   organizationIntegrationId: string;
   organizationName: string | null;
   priceEngine: {

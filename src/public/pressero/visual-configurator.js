@@ -1,2 +1,307 @@
-// Sprint 1 placeholder.
-// The validated V22.1 Pressero script remains in docs/reference and is not duplicated here.
+(function () {
+  "use strict";
+
+  if (window.__PRESSERO_PJM_VISUAL_CONFIGURATOR__) return;
+  window.__PRESSERO_PJM_VISUAL_CONFIGURATOR__ = true;
+
+  var script = document.currentScript;
+  var runtimeConfig = window.PresseroPjmVisualConfig || {};
+  var rootId = "pressero-pjm-visual-configurator";
+  var state = {
+    config: null,
+    bindings: []
+  };
+
+  function normalize(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  function readScriptOrigin() {
+    if (!script || !script.src) return window.location.origin;
+    try {
+      return new URL(script.src).origin;
+    } catch (_error) {
+      return window.location.origin;
+    }
+  }
+
+  function readMisProductId() {
+    var params = new URLSearchParams(window.location.search);
+    return runtimeConfig.misProductId ||
+      (script && script.dataset ? script.dataset.misProductId : "") ||
+      params.get("misProductId") ||
+      document.body.getAttribute("data-mis-product-id") ||
+      "";
+  }
+
+  function buildConfigUrl(misProductId) {
+    var baseUrl = String(runtimeConfig.baseUrl || readScriptOrigin()).replace(/\/+$/, "");
+    return baseUrl +
+      "/pressero-config/public/products/" +
+      encodeURIComponent(misProductId) +
+      "/visual-config";
+  }
+
+  function injectStyles() {
+    if (document.getElementById("pressero-pjm-visual-styles")) return;
+
+    var style = document.createElement("style");
+    style.id = "pressero-pjm-visual-styles";
+    style.textContent = [
+      "#pressero-pjm-visual-configurator{display:block;background:#fff;border:1px solid #d7deea;border-radius:8px;padding:16px;margin:0 0 18px 0;box-sizing:border-box}",
+      "#pressero-pjm-visual-configurator[hidden]{display:none!important}",
+      ".ppv-title{margin:0 0 14px 0;font-size:20px;font-weight:700;color:#111827}",
+      ".ppv-section{margin:0 0 18px 0}",
+      ".ppv-section:last-child{margin-bottom:0}",
+      ".ppv-label{display:block;margin:0 0 8px 0;font-size:14px;font-weight:700;color:#1f2937}",
+      ".ppv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px}",
+      ".ppv-choice{display:flex;min-height:116px;align-items:center;justify-content:center;flex-direction:column;gap:8px;padding:9px;border:2px solid #d7deea;border-radius:8px;background:#fff;color:#111827;cursor:pointer;text-align:center;box-sizing:border-box}",
+      ".ppv-choice:hover{border-color:#2563eb}",
+      ".ppv-choice.is-selected{border-color:#16833a;box-shadow:0 0 0 3px rgba(22,131,58,.14)}",
+      ".ppv-choice img{display:block;width:76px;height:76px;object-fit:contain;pointer-events:none}",
+      ".ppv-choice span{font-size:13px;line-height:1.2;font-weight:600}",
+      ".ppv-native-hidden{position:absolute!important;left:-99999px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}",
+      ".ppv-warning{font-size:13px;color:#b45309;margin:6px 0 0 0}"
+    ].join("");
+    document.head.appendChild(style);
+  }
+
+  function onReady(callback) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", callback, { once: true });
+      return;
+    }
+    callback();
+  }
+
+  function findInsertAnchor() {
+    return document.getElementById("calcParmInputs") ||
+      document.querySelector("[id*='pricing'], [class*='pricing']") ||
+      document.querySelector("form") ||
+      document.body.firstElementChild;
+  }
+
+  function ensureRoot() {
+    var root = document.getElementById(rootId);
+    if (root) return root;
+
+    root = document.createElement("div");
+    root.id = rootId;
+    root.hidden = true;
+
+    var anchor = findInsertAnchor();
+    if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(root, anchor);
+    } else {
+      document.body.prepend(root);
+    }
+
+    return root;
+  }
+
+  function optionValues(select) {
+    return Array.prototype.map.call(select.options || [], function (option) {
+      return normalize(option.value);
+    });
+  }
+
+  function labelForSelector(id) {
+    if (!id) return null;
+    if (window.CSS && typeof window.CSS.escape === "function") {
+      return "label[for='" + window.CSS.escape(id) + "']";
+    }
+    return "label[for='" + String(id).replace(/'/g, "\\'") + "']";
+  }
+
+  function labelNearField(field) {
+    var id = field.id;
+    var selector = labelForSelector(id);
+    var label = selector ? document.querySelector(selector) : null;
+    if (label) return label.textContent || "";
+
+    var group = field.closest("li,.form-group,.field,div");
+    var groupLabel = group ? group.querySelector("label") : null;
+    return groupLabel ? groupLabel.textContent || "" : "";
+  }
+
+  function scoreSelectForOption(select, option) {
+    var values = optionValues(select);
+    var choiceValues = option.choices.map(function (choice) {
+      return normalize(choice.value);
+    });
+    var matchingValues = choiceValues.filter(function (value) {
+      return values.indexOf(value) >= 0;
+    }).length;
+
+    var label = normalize(labelNearField(select));
+    var labelScore = label &&
+      (label.indexOf(normalize(option.label)) >= 0 ||
+        label.indexOf(normalize(option.name)) >= 0)
+      ? 2
+      : 0;
+
+    return matchingValues * 10 + labelScore;
+  }
+
+  function findNativeField(option) {
+    var selects = Array.prototype.slice.call(document.querySelectorAll("select"));
+    var best = selects
+      .map(function (select) {
+        return {
+          select: select,
+          score: scoreSelectForOption(select, option)
+        };
+      })
+      .sort(function (left, right) {
+        return right.score - left.score;
+      })[0];
+
+    return best && best.score > 0 ? best.select : null;
+  }
+
+  function nativeFieldGroup(field) {
+    return field.closest("li,.form-group,.field") || field.parentElement;
+  }
+
+  function markNativeField(field) {
+    var group = nativeFieldGroup(field);
+    if (group) {
+      group.classList.add("ppv-native-hidden");
+    } else {
+      field.classList.add("ppv-native-hidden");
+    }
+  }
+
+  function setNativeValue(field, value) {
+    field.value = String(value);
+    Array.prototype.forEach.call(field.options || [], function (option) {
+      option.selected = String(option.value) === String(value);
+    });
+    field.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function syncSelection(section, field) {
+    var value = String(field.value || "");
+    section.querySelectorAll(".ppv-choice").forEach(function (button) {
+      var selected = button.getAttribute("data-value") === value;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
+  }
+
+  function renderChoice(choice, field, section) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "ppv-choice";
+    button.setAttribute("data-value", choice.value);
+    button.setAttribute("aria-pressed", "false");
+
+    if (choice.image && choice.image.url) {
+      var image = document.createElement("img");
+      image.src = choice.image.url;
+      image.alt = choice.image.altText || choice.label;
+      image.loading = "lazy";
+      button.appendChild(image);
+    }
+
+    var label = document.createElement("span");
+    label.textContent = choice.label;
+    button.appendChild(label);
+
+    button.addEventListener("click", function (event) {
+      event.preventDefault();
+      setNativeValue(field, choice.value);
+      syncSelection(section, field);
+    });
+
+    return button;
+  }
+
+  function renderOption(option, root) {
+    var field = findNativeField(option);
+    if (!field) return null;
+
+    markNativeField(field);
+
+    var section = document.createElement("section");
+    section.className = "ppv-section";
+    section.setAttribute("data-option-id", option.pjmId);
+
+    var label = document.createElement("strong");
+    label.className = "ppv-label";
+    label.textContent = option.label || option.name;
+    section.appendChild(label);
+
+    var grid = document.createElement("div");
+    grid.className = "ppv-grid";
+    option.choices.forEach(function (choice) {
+      grid.appendChild(renderChoice(choice, field, section));
+    });
+    section.appendChild(grid);
+    root.appendChild(section);
+
+    field.addEventListener("change", function () {
+      syncSelection(section, field);
+    });
+    syncSelection(section, field);
+
+    state.bindings.push({
+      option: option,
+      field: field
+    });
+
+    return section;
+  }
+
+  function renderConfig(config) {
+    var root = ensureRoot();
+    root.innerHTML = "";
+    state.bindings = [];
+
+    var title = document.createElement("h2");
+    title.className = "ppv-title";
+    title.textContent = config.name || "Configuration";
+    root.appendChild(title);
+
+    (config.options || []).forEach(function (option) {
+      renderOption(option, root);
+    });
+
+    if (!state.bindings.length) {
+      var warning = document.createElement("p");
+      warning.className = "ppv-warning";
+      warning.textContent = "Aucune option visuelle ne correspond aux champs Pressero de cette page.";
+      root.appendChild(warning);
+    }
+
+    root.hidden = false;
+  }
+
+  async function load() {
+    injectStyles();
+    var misProductId = readMisProductId();
+    if (!misProductId) return;
+
+    var response = await fetch(buildConfigUrl(misProductId), {
+      credentials: "omit",
+      headers: {
+        Accept: "application/json"
+      }
+    });
+    if (!response.ok) return;
+
+    var payload = await response.json();
+    state.config = payload.data || payload;
+    renderConfig(state.config);
+  }
+
+  onReady(function () {
+    load().catch(function (_error) {
+      ensureRoot().hidden = true;
+    });
+  });
+})();

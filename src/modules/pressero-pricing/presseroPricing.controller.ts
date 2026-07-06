@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import {
   buildPresseroOptionsForProduct,
   buildDiagnosticPresseroPricingPayload,
-  buildDiagnosticPresseroPricingResponse,
+  buildPresseroPricingResponse,
   describePresseroPricingRequest,
   getPresseroPricingModuleName,
   readPresseroProductId,
@@ -95,11 +95,16 @@ async function sendPresseroPricingJson(req: Request, res: Response) {
     }
   }
 
-  const pricing = buildDiagnosticPresseroPricingResponse(body);
+  const pricing = await buildPresseroPricingResponse(
+    requestSummary.productId,
+    body
+  );
   logPresseroPricingEvent("price-response", {
     productId: requestSummary.productId,
     quantity: requestSummary.quantity,
     price: pricing.Price,
+    source: pricing.source,
+    error: pricing.Error ?? null,
     selectedOptionCount: requestSummary.selectedOptionCount
   });
 

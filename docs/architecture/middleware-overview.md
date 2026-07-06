@@ -145,3 +145,12 @@ Diagnostics now include `operation`, `productKeys` and `rawOptionCount` so the n
 ## Sprint 43 Pressero Product String
 
 If Pressero sends `product` directly as a string, the provider now treats that string as the `MIS Product ID`. Diagnostics also include `productType` and `productPreview` to distinguish string payloads from object payloads.
+
+## Sprint 44 Pressero Price And Visual Runtime
+
+The Pressero pricing provider now resolves the product configuration from the `MIS Product ID` and routes price calculation by mode:
+
+- `pjmLive` calls PJM `optionsandprice`;
+- `negotiated` resolves the saved negotiated combination and interpolates between tiers.
+
+The public visual runtime `/public/pressero/visual-configurator.js` now loads the product visual config, renders mapped image choices, updates real Pressero selects and dispatches the native `change` event. It does not calculate price in the browser.

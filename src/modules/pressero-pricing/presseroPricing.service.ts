@@ -1,4 +1,8 @@
 import type {
+  Prisma,
+  PresseroPricingMode
+} from "@prisma/client";
+import type {
   PresseroPricingDebugResponse,
   PresseroPricingJsonResponse,
   PresseroPricingParameter,
@@ -7,8 +11,52 @@ import type {
   PresseroPricingRequestBody
 } from "./presseroPricing.types.js";
 import { prisma } from "../../config/prisma.js";
+import { createPjmClientFromEnv } from "../pjm-sync/pjmClient.js";
+import type { PjmEngineOptionValue } from "../pjm-sync/pjmContracts.types.js";
 
 const diagnosticUnitPrice = 12.34;
+const quantityOptionPatterns = [
+  "quantity",
+  "quantite",
+  "quantité",
+  "exemplaire",
+  "exemplaires"
+];
+
+const pricingConfigInclude = {
+  priceEngine: {
+    include: {
+      options: {
+        include: {
+          choices: true
+        }
+      }
+    }
+  },
+  negotiatedProfile: {
+    include: {
+      combinations: {
+        where: {
+          status: "active"
+        },
+        orderBy: {
+          sortOrder: "asc"
+        },
+        include: {
+          tiers: {
+            orderBy: {
+              tierValue: "asc"
+            }
+          }
+        }
+      }
+    }
+  }
+} satisfies Prisma.PresseroProductConfigInclude;
+
+type PricingConfigRecord = Prisma.PresseroProductConfigGetPayload<{
+  include: typeof pricingConfigInclude;
+}>;
 
 export function getPresseroPricingModuleName() {
   return "pressero-pricing";
@@ -155,6 +203,182 @@ export function readPresseroPricingQuantity(body: PresseroPricingRequestBody) {
   );
 }
 
+function normalizeComparable(value: unknown) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function readPjmPrice(response: unknown): number | null {
+  if (!response || typeof response !== "object") return null;
+  const record = response as Record<string, unknown>;
+  const value = record.Price ?? record.price ?? record.TotalPrice ?? record.totalPrice;
+  const price = Number(value);
+  return Number.isFinite(price) ? price : null;
+}
+
+function readPjmError(response: unknown) {
+  if (!response || typeof response !== "object") return null;
+  const record = response as Record<string, unknown>;
+  const error = record.Error ?? record.error;
+  const errorCode = record.ErrorCode ?? record.errorCode;
+  if (error) return String(error);
+  if (errorCode) return `PJM ErrorCode ${String(errorCode)}`;
+  return null;
+}
+
+function buildPricingResponse(
+  price: number,
+  source: PresseroPricingJsonResponse["source"],
+  options: PresseroPricingParameterOption[],
+  error: string | null = null
+): PresseroPricingJsonResponse {
+  const safePrice = Number.isFinite(price) ? Number(price.toFixed(2)) : 0;
+
+  return {
+    Error: error,
+    Price: safePrice,
+    Cost: 0,
+    Weight: 0,
+    TotalPrice: safePrice,
+    TotalCost: 0,
+    TotalWeight: 0,
+    price: safePrice,
+    cost: 0,
+    weight: 0,
+    success: !error,
+    Options: options,
+    source
+  };
+}
+
+function findQuantityOption(config: PricingConfigRecord) {
+  return config.priceEngine.options.find((option) => {
+    const label = normalizeComparable(
+      `${option.name} ${option.displayName ?? ""} ${option.optionType ?? ""}`
+    );
+    return quantityOptionPatterns.some((pattern) => label.includes(pattern));
+  });
+}
+
+function buildPjmEngineValues(
+  config: PricingConfigRecord,
+  body: PresseroPricingRequestBody
+) {
+  const selectedOptions = readSelectedOptions(body);
+  const values: PjmEngineOptionValue[] = selectedOptions.map((option) => ({
+    Key: option.Key,
+    Value: option.Value
+  }));
+  const selectedKeys = new Set(values.map((value) => value.Key));
+  const quantityOption = findQuantityOption(config);
+
+  if (quantityOption && !selectedKeys.has(quantityOption.pjmId)) {
+    values.push({
+      Key: quantityOption.pjmId,
+      Value: readPresseroPricingQuantity(body)
+    });
+  }
+
+  return values;
+}
+
+function readCombinationSelections(combination: {
+  optionSelections: Prisma.JsonValue;
+}) {
+  if (!Array.isArray(combination.optionSelections)) {
+    return [];
+  }
+
+  return combination.optionSelections.flatMap((option) => {
+    if (!option || typeof option !== "object") return [];
+    const optionRecord = option as Record<string, unknown>;
+    const key = String(optionRecord.pjmKey ?? "");
+    const choices = Array.isArray(optionRecord.choices)
+      ? optionRecord.choices
+      : [];
+
+    return choices.flatMap((choice) => {
+      if (!choice || typeof choice !== "object") return [];
+      const choiceRecord = choice as Record<string, unknown>;
+      const value = String(choiceRecord.pjmValue ?? "");
+      return key && value ? [{ Key: key, Value: value }] : [];
+    });
+  });
+}
+
+function selectedOptionsMatchCombination(
+  selectedOptions: PresseroPricingParameterOption[],
+  combination: {
+    optionSelections: Prisma.JsonValue;
+  }
+) {
+  const selectedMap = new Map(
+    selectedOptions.map((option) => [
+      normalizeComparable(option.Key),
+      normalizeComparable(option.Value)
+    ])
+  );
+  const combinationSelections = readCombinationSelections(combination);
+
+  return combinationSelections.every((selection) => {
+    return selectedMap.get(normalizeComparable(selection.Key)) ===
+      normalizeComparable(selection.Value);
+  });
+}
+
+function interpolateTierPrice(
+  tiers: Array<{
+    tierValue: Prisma.Decimal;
+    negotiatedPrice: Prisma.Decimal | null;
+  }>,
+  quantity: number
+) {
+  const pricedTiers = tiers
+    .map((tier) => ({
+      quantity: Number(tier.tierValue),
+      price: tier.negotiatedPrice === null ? null : Number(tier.negotiatedPrice)
+    }))
+    .filter((tier): tier is { quantity: number; price: number } => {
+      return Number.isFinite(tier.quantity) && Number.isFinite(tier.price);
+    })
+    .sort((left, right) => left.quantity - right.quantity);
+
+  if (!pricedTiers.length) {
+    return null;
+  }
+
+  const exact = pricedTiers.find((tier) => tier.quantity === quantity);
+  if (exact) return exact.price;
+
+  const lower = [...pricedTiers].reverse().find((tier) => tier.quantity < quantity);
+  const upper = pricedTiers.find((tier) => tier.quantity > quantity);
+
+  if (!lower) return pricedTiers[0].price;
+  if (!upper) return pricedTiers[pricedTiers.length - 1].price;
+
+  const ratio = (quantity - lower.quantity) / (upper.quantity - lower.quantity);
+  return lower.price + (upper.price - lower.price) * ratio;
+}
+
+async function readPricingConfig(productId: string) {
+  const config = await prisma.presseroProductConfig.findFirst({
+    where: {
+      misProductId: productId,
+      isActive: true
+    },
+    include: pricingConfigInclude
+  });
+
+  if (!config) {
+    throw new Error("MIS Product ID introuvable ou inactif dans le middleware.");
+  }
+
+  return config;
+}
+
 export function describePresseroPricingRequest(
   body: PresseroPricingRequestBody,
   query: Record<string, unknown> = {},
@@ -182,6 +406,73 @@ export function describePresseroPricingRequest(
     rawOptionCount: rawOptionsArray.length,
     pricingParameterKeys: Object.keys(parameters),
     selectedOptionCount: selectedOptions.length
+  };
+}
+
+async function calculatePjmLivePrice(
+  config: PricingConfigRecord,
+  body: PresseroPricingRequestBody
+) {
+  const client = createPjmClientFromEnv();
+  const response = await client.getOptionsAndPrice(
+    config.enginePriceGroupIntegrationId,
+    buildPjmEngineValues(config, body)
+  );
+  const pjmError = readPjmError(response);
+
+  if (pjmError) {
+    throw new Error(pjmError);
+  }
+
+  const price = readPjmPrice(response);
+  if (price === null) {
+    throw new Error("PJM n'a pas retourne de prix exploitable.");
+  }
+
+  return price;
+}
+
+function calculateNegotiatedPrice(
+  config: PricingConfigRecord,
+  body: PresseroPricingRequestBody
+) {
+  const profile = config.negotiatedProfile;
+  if (!profile) {
+    throw new Error("Profil de prix negocie introuvable pour ce produit Pressero.");
+  }
+
+  const selectedOptions = readSelectedOptions(body);
+  const quantity = readPresseroPricingQuantity(body);
+  const matchingCombination = profile.combinations.find((combination) => {
+    return selectedOptionsMatchCombination(selectedOptions, combination);
+  });
+
+  if (!matchingCombination) {
+    throw new Error("Aucune combinaison negociee ne correspond aux options choisies.");
+  }
+
+  const price = interpolateTierPrice(matchingCombination.tiers, quantity);
+  if (price === null) {
+    throw new Error("Aucun palier de prix negocie exploitable pour cette combinaison.");
+  }
+
+  return price;
+}
+
+async function calculateConfiguredPrice(
+  config: PricingConfigRecord,
+  body: PresseroPricingRequestBody
+) {
+  if ((config.pricingMode as PresseroPricingMode) === "negotiated") {
+    return {
+      price: calculateNegotiatedPrice(config, body),
+      source: "negotiated" as const
+    };
+  }
+
+  return {
+    price: await calculatePjmLivePrice(config, body),
+    source: "pjmLive" as const
   };
 }
 
@@ -280,19 +571,32 @@ export function buildDiagnosticPresseroPricingResponse(
   const price = Number((quantity * diagnosticUnitPrice).toFixed(2));
   const selectedOptions = readSelectedOptions(body);
 
-  return {
-    Price: price,
-    Cost: 0,
-    Weight: 0,
-    TotalPrice: price,
-    TotalCost: 0,
-    TotalWeight: 0,
-    price,
-    cost: 0,
-    weight: 0,
-    success: true,
-    Options: selectedOptions
-  };
+  return buildPricingResponse(price, "diagnostic", selectedOptions);
+}
+
+export async function buildPresseroPricingResponse(
+  productId: string | null,
+  body: PresseroPricingRequestBody
+): Promise<PresseroPricingJsonResponse> {
+  const selectedOptions = readSelectedOptions(body);
+
+  if (!productId) {
+    return buildPricingResponse(
+      0,
+      "diagnostic",
+      selectedOptions,
+      "MIS Product ID manquant. Pressero doit envoyer product."
+    );
+  }
+
+  try {
+    const config = await readPricingConfig(productId);
+    const calculated = await calculateConfiguredPrice(config, body);
+    return buildPricingResponse(calculated.price, calculated.source, selectedOptions);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erreur de calcul inconnue.";
+    return buildPricingResponse(0, "diagnostic", selectedOptions, message);
+  }
 }
 
 export function buildDiagnosticPresseroPricingPayload(
