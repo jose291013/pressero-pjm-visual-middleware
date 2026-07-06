@@ -183,3 +183,9 @@ When calculating live PJM prices, the middleware now prefers the value received 
 The provider now accepts Pressero option values sent as strings, numbers or booleans, then converts them to strings before building the PJM payload. This prevents free-input PJM fields such as `Quantite d'exemplaires` from being dropped when Pressero sends numeric values.
 
 The visual runtime hides the generic external-pricing `Quantity` field when a real PJM quantity field is present in the page. The PJM quantity field remains visible and native.
+
+## Sprint 49 Pressero Composite Option Keys
+
+Pressero can send option keys as composite values such as `prefix:optionId`. The pricing provider now matches both the full key and each colon-separated part when resolving Pressero options to PJM options and choices.
+
+This allows free-input PJM fields such as `Quantite d'exemplaires` to be correctly mapped even when Pressero wraps the PJM option ID in a composite key.

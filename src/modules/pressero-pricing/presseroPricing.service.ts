@@ -214,6 +214,24 @@ function normalizeComparable(value: unknown) {
     .trim();
 }
 
+function normalizeComparableParts(value: unknown) {
+  const normalized = normalizeComparable(value);
+  return normalized
+    .split(":")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function comparableMatches(value: unknown, candidate: unknown) {
+  const normalizedValue = normalizeComparable(value);
+  const normalizedCandidate = normalizeComparable(candidate);
+  if (!normalizedValue || !normalizedCandidate) return false;
+  if (normalizedValue === normalizedCandidate) return true;
+
+  return normalizeComparableParts(value).includes(normalizedCandidate) ||
+    normalizeComparableParts(candidate).includes(normalizedValue);
+}
+
 function readPjmPrice(response: unknown): number | null {
   if (!response || typeof response !== "object") return null;
   const record = response as Record<string, unknown>;
@@ -283,7 +301,10 @@ function findConfigOptionByPresseroKey(
       option.name,
       option.displayName,
       option.id
-    ].some((value) => normalizeComparable(value) === normalizedKey);
+    ].some((value) =>
+      normalizeComparable(value) === normalizedKey ||
+      comparableMatches(key, value)
+    );
   });
 }
 
@@ -299,7 +320,10 @@ function findConfigChoiceByPresseroValue(
       choice.name,
       choice.normalizedName,
       choice.id
-    ].some((candidate) => normalizeComparable(candidate) === normalizedValue);
+    ].some((candidate) =>
+      normalizeComparable(candidate) === normalizedValue ||
+      comparableMatches(value, candidate)
+    );
   });
 }
 
@@ -338,7 +362,10 @@ function selectedOptionMatchesConfigOption(
     configOption.name,
     configOption.displayName,
     configOption.id
-  ].some((value) => normalizeComparable(value) === selectedKey);
+  ].some((value) =>
+    normalizeComparable(value) === selectedKey ||
+    comparableMatches(selectedOption.Key, value)
+  );
 }
 
 function readSelectedQuantityValue(
