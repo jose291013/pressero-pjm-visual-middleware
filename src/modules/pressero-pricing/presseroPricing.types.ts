@@ -26,6 +26,10 @@ export type PresseroPricingParameters = {
 };
 
 export type PresseroPricingRequestBody = {
+  operation?: unknown;
+  Operation?: unknown;
+  product?: unknown;
+  Product?: unknown;
   user?: string;
   accessToken?: string;
   productID?: string;

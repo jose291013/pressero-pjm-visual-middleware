@@ -47,10 +47,47 @@ function readProductIdFromSource(source: Record<string, unknown>) {
     "ProductID",
     "ProductId",
     "product_id",
+    "id",
+    "ID",
     "misProductId",
     "MISProductID",
+    "MISProductId",
     "MisProductId"
   ]);
+}
+
+function readOperationValue(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  const record = readObject(value);
+  return readStringFrom(record, [
+    "name",
+    "Name",
+    "method",
+    "Method",
+    "action",
+    "Action",
+    "type",
+    "Type"
+  ]);
+}
+
+function readPresseroOperation(
+  body: PresseroPricingRequestBody,
+  query: Record<string, unknown> = {}
+) {
+  return (
+    readOperationValue(body.operation) ??
+    readOperationValue(body.Operation) ??
+    readOperationValue(query.operation) ??
+    readOperationValue(query.Operation) ??
+    readOperationValue(query.method) ??
+    readOperationValue(query.Method) ??
+    readOperationValue(query.action) ??
+    readOperationValue(query.Action)
+  );
 }
 
 export function readPresseroProductId(
@@ -65,6 +102,12 @@ export function readPresseroProductId(
 
   const nestedData = readProductIdFromSource(readObject(body.data));
   if (nestedData) return nestedData;
+
+  const nestedProduct = readProductIdFromSource(readObject(body.product));
+  if (nestedProduct) return nestedProduct;
+
+  const nestedProductUpper = readProductIdFromSource(readObject(body.Product));
+  if (nestedProductUpper) return nestedProductUpper;
 
   return null;
 }
@@ -111,14 +154,20 @@ export function describePresseroPricingRequest(
 ) {
   const parameters = readPricingParameters(body);
   const selectedOptions = readSelectedOptions(body);
+  const product = readObject(body.product ?? body.Product);
+  const rawOptions = body.options ?? body.Options;
+  const rawOptionsArray = Array.isArray(rawOptions) ? rawOptions : [];
 
   return {
     path,
+    operation: readPresseroOperation(body, query),
     mode: readPresseroProviderMode(body, query, path),
     productId: readPresseroProductId(body, query),
     quantity: readPresseroPricingQuantity(body),
     bodyKeys: Object.keys(body),
     queryKeys: Object.keys(query),
+    productKeys: Object.keys(product),
+    rawOptionCount: rawOptionsArray.length,
     pricingParameterKeys: Object.keys(parameters),
     selectedOptionCount: selectedOptions.length
   };
@@ -131,6 +180,7 @@ export function readPresseroProviderMode(
 ): PresseroPricingProviderMode {
   const method = [
     path,
+    readPresseroOperation(body, query),
     query.method,
     query.Method,
     query.action,

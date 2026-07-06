@@ -133,3 +133,11 @@ The Pressero pricing provider now logs each request and response branch with the
 ```
 
 These logs expose the detected mode, path, productId, quantity, body keys, query keys, pricing parameter keys and option counts. They are intended to identify whether Pressero calls the options branch, sends the MIS Product ID, or receives an empty option set.
+
+## Sprint 42 Pressero JSON Operation Product
+
+Render logs showed that Pressero JSON calls use a body shaped around `operation`, `product`, `options`, `quantity` and `customer`.
+
+The provider now inspects `operation` when detecting options versus price calls, and it also searches for the Pressero `MIS Product ID` inside the nested `product` object.
+
+Diagnostics now include `operation`, `productKeys` and `rawOptionCount` so the next Pressero test can reveal the exact option-call contract.
