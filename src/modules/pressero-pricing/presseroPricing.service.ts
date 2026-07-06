@@ -263,6 +263,12 @@ function findQuantityOption(config: PricingConfigRecord) {
   });
 }
 
+function isFreeInputOption(
+  option: PricingConfigRecord["priceEngine"]["options"][number]
+) {
+  return option.choices.filter((choice) => choice.isActive).length === 0;
+}
+
 function findConfigOptionByPresseroKey(
   config: PricingConfigRecord,
   key: string
@@ -313,6 +319,54 @@ function buildResolvedPjmEngineValue(
   };
 }
 
+function selectedOptionMatchesConfigOption(
+  config: PricingConfigRecord,
+  selectedOption: PresseroPricingParameterOption,
+  configOption: PricingConfigRecord["priceEngine"]["options"][number]
+) {
+  const resolved = findConfigOptionByPresseroKey(config, selectedOption.Key);
+  if (resolved) {
+    return resolved.id === configOption.id;
+  }
+
+  const selectedKey = normalizeComparable(selectedOption.Key);
+  return [
+    configOption.pjmId,
+    configOption.name,
+    configOption.displayName,
+    configOption.id
+  ].some((value) => normalizeComparable(value) === selectedKey);
+}
+
+function readSelectedQuantityValue(
+  config: PricingConfigRecord,
+  selectedOptions: PresseroPricingParameterOption[]
+) {
+  const quantityOption = findQuantityOption(config);
+  if (!quantityOption) return null;
+
+  const selectedQuantity = selectedOptions.find((option) =>
+    selectedOptionMatchesConfigOption(config, option, quantityOption)
+  );
+  if (!selectedQuantity) return null;
+
+  const quantity = Number(String(selectedQuantity.Value).replace(",", "."));
+  return Number.isFinite(quantity) && quantity > 0 ? quantity : null;
+}
+
+function readEffectivePjmQuantity(
+  config: PricingConfigRecord,
+  body: PresseroPricingRequestBody,
+  quantityOverride?: number
+) {
+  if (quantityOverride !== undefined) {
+    return quantityOverride;
+  }
+
+  const selectedQuantity = readSelectedQuantityValue(config, readSelectedOptions(body));
+  return selectedQuantity ?? readPresseroPricingQuantity(body);
+}
+
 function buildPjmEngineValues(
   config: PricingConfigRecord,
   body: PresseroPricingRequestBody,
@@ -325,7 +379,7 @@ function buildPjmEngineValues(
   const quantityOption = findQuantityOption(config);
 
   if (quantityOption) {
-    const quantity = String(quantityOverride ?? readPresseroPricingQuantity(body));
+    const quantity = String(readEffectivePjmQuantity(config, body, quantityOverride));
     const quantityKey = normalizeComparable(quantityOption.pjmId);
     const existingQuantity = values.find((value) => {
       return normalizeComparable(value.Key) === quantityKey ||
@@ -483,7 +537,7 @@ async function calculatePjmLivePrice(
   body: PresseroPricingRequestBody
 ) {
   const client = createPjmClientFromEnv();
-  const requestedQuantity = readPresseroPricingQuantity(body);
+  const requestedQuantity = readEffectivePjmQuantity(config, body);
   const response = await client.getOptionsAndPrice(
     config.enginePriceGroupIntegrationId,
     buildPjmEngineValues(config, body)
@@ -635,14 +689,14 @@ export async function buildPresseroOptionsForProduct(
 
   return config.priceEngine.options
     .map((option) => {
-      const choices = option.choices
-        .filter((choice) => choice.isActive && choice.visualMapping?.isEnabled)
+      const activeChoices = option.choices.filter((choice) => choice.isActive);
+      const choices = activeChoices
         .map((choice) => ({
           Key: choice.name,
           Value: choice.value || choice.pjmId
         }));
 
-      if (!choices.length) return null;
+      if (!choices.length && !isFreeInputOption(option)) return null;
 
       return {
         ID: option.pjmId,

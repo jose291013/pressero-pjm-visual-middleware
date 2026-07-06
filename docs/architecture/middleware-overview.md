@@ -171,3 +171,9 @@ For live PJM pricing, the provider now forces the Pressero `body.quantity` value
 The visual runtime now survives Pressero internal DOM refreshes. It attaches a guarded `MutationObserver` to `document.body` and re-renders the visual option buttons after Pressero replaces the native option block.
 
 For live PJM pricing, if PJM returns a minimum quantity error such as `must be between 25 and ...`, the middleware extracts the minimum value and retries `optionsandprice` once with that quantity when the Pressero quantity is below the PJM minimum.
+
+## Sprint 47 Pressero Free Quantity Option
+
+`GetOptionsForProduct` now returns PJM free-input parameters as Pressero pricing parameters with `Options: []`. This allows quantity-like PJM parameters, such as `Quantite d'exemplaires`, to be displayed by Pressero instead of relying only on the generic external-pricing `Quantity` field.
+
+When calculating live PJM prices, the middleware now prefers the value received for the real PJM quantity option. The generic Pressero quantity is only used as a fallback.
