@@ -1171,6 +1171,12 @@ tbody tr.is-selected {
   justify-content: center;
 }
 
+.media-import-grid {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 8px;
+}
+
 .media-import-result {
   display: none;
   border: 1px solid #94d3b0;
@@ -1196,6 +1202,13 @@ tbody tr.is-selected {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.media-import-source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #315b42;
 }
 
 .media-import-item {

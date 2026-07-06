@@ -5,6 +5,7 @@ import {
   getAdminMediaAssets,
   getMediaLibraryStatus,
   postAdminMediaAsset,
+  postAdminMediaAssetsGithubImport,
   postAdminMediaAssetsUrlImport,
   postAdminMediaAssetsZip,
   putAdminMediaAsset
@@ -27,5 +28,6 @@ mediaLibraryRouter.post(
   postAdminMediaAssetsZip
 );
 mediaLibraryRouter.post("/admin/assets/import-urls", postAdminMediaAssetsUrlImport);
+mediaLibraryRouter.post("/admin/assets/import-github", postAdminMediaAssetsGithubImport);
 mediaLibraryRouter.put("/admin/assets/:assetId", putAdminMediaAsset);
 mediaLibraryRouter.delete("/admin/assets/:assetId", deleteAdminMediaAsset);

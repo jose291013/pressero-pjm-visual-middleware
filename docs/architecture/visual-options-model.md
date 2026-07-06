@@ -91,3 +91,25 @@ files:
 The middleware creates or updates `MediaAsset` rows by normalized key and stores the absolute image URL. Existing `VisualOptionMapping` records remain stable because they reference `MediaAsset.id`, not the image file on disk.
 
 This Render Static flow does not change the V22.1 Pressero behavior: visual choices still update real PJM/Pressero fields and PJM remains responsible for pricing and cart behavior.
+
+## Sprint 38 Media GitHub Import
+
+The media library can now scan a public GitHub repository to avoid manually copying image file names into the admin.
+
+GitHub is used only as a catalog of file names:
+
+```text
+GitHub public repo -> image file list
+Render Static base URL + file path -> final public image URL
+```
+
+The middleware does not serve images from GitHub raw URLs. Render Static remains the public image host used by Pressero, while GitHub remains the source repository used for deployment and scanning.
+
+This keeps the image mapping workflow simple:
+
+```text
+Upload images to GitHub
+Deploy Render Static
+Scan GitHub in the middleware
+Map MediaAsset records to PJM option choices
+```

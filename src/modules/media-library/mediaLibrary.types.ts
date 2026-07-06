@@ -46,3 +46,19 @@ export type MediaAssetUrlImportInput = {
 };
 
 export type MediaAssetUrlImportResult = MediaAssetZipImportResult;
+
+export type MediaAssetGithubImportInput = {
+  baseUrl?: string;
+  repository?: string;
+  branch?: string;
+  directory?: string;
+};
+
+export type MediaAssetGithubImportResult = MediaAssetZipImportResult & {
+  scanned: number;
+  source: {
+    repository: string;
+    branch: string;
+    directory: string;
+  };
+};

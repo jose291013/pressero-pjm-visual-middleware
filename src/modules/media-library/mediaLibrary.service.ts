@@ -5,6 +5,8 @@ import type { Prisma } from "@prisma/client";
 import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
 import type {
+  MediaAssetGithubImportInput,
+  MediaAssetGithubImportResult,
   MediaAssetInput,
   MediaAssetUrlImportInput,
   MediaAssetUrlImportResult,
@@ -26,6 +28,12 @@ type MediaAssetRecord = Prisma.MediaAssetGetPayload<{
 
 const allowedImageExtensions = new Set([".svg", ".webp", ".png", ".jpg", ".jpeg"]);
 const publicMediaAssetsPath = "/public/media/assets";
+
+type GithubContentEntry = {
+  name?: unknown;
+  path?: unknown;
+  type?: unknown;
+};
 
 export function getMediaLibraryModuleName() {
   return "media-library";
@@ -320,6 +328,93 @@ function buildExternalAssetUrl(baseUrl: string, filePath: string) {
   return new URL(filePath, baseUrl).toString();
 }
 
+function readGithubRepository(repository: string) {
+  const value = repository.trim();
+  if (!value) {
+    throw new Error("Depot GitHub obligatoire.");
+  }
+
+  const withoutProtocol = value
+    .replace(/^https?:\/\/github\.com\//i, "")
+    .replace(/\.git$/i, "")
+    .replace(/^\/+|\/+$/g, "");
+  const [owner, repo, ...rest] = withoutProtocol.split("/");
+  if (!owner || !repo || rest.length) {
+    throw new Error("Depot GitHub invalide. Utilisez owner/repo.");
+  }
+
+  return {
+    owner,
+    repo,
+    fullName: `${owner}/${repo}`
+  };
+}
+
+function normalizeGithubDirectory(directory: string | undefined) {
+  const value = (directory ?? "").trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+  if (!value || value === ".") {
+    return "";
+  }
+
+  if (value.includes("../")) {
+    throw new Error("Dossier GitHub invalide.");
+  }
+
+  return value;
+}
+
+function buildGithubContentsUrl(repository: ReturnType<typeof readGithubRepository>, directory: string, branch: string) {
+  const pathSegment = directory
+    ? `/${directory.split("/").filter(Boolean).map((segment) => encodeURIComponent(segment)).join("/")}`
+    : "";
+  return `https://api.github.com/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.repo)}/contents${pathSegment}?ref=${encodeURIComponent(branch)}`;
+}
+
+function isAllowedImageFile(filePath: string) {
+  return allowedImageExtensions.has(path.extname(filePath).toLowerCase());
+}
+
+async function listGithubImageFiles(input: MediaAssetGithubImportInput) {
+  const repository = readGithubRepository(input.repository ?? "");
+  const branch = (input.branch ?? "main").trim() || "main";
+  const directory = normalizeGithubDirectory(input.directory);
+  const response = await fetch(buildGithubContentsUrl(repository, directory, branch), {
+    headers: {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "pressero-pjm-visual-middleware",
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitHub a refuse la lecture du depot (${response.status}).`);
+  }
+
+  const payload = await response.json();
+  if (!Array.isArray(payload)) {
+    throw new Error("Le chemin GitHub doit pointer vers un dossier.");
+  }
+
+  const files = payload
+    .filter((entry: GithubContentEntry) => entry.type === "file")
+    .map((entry: GithubContentEntry) => {
+      if (typeof entry.path === "string") return entry.path;
+      if (typeof entry.name === "string") return directory ? `${directory}/${entry.name}` : entry.name;
+      return "";
+    })
+    .filter((filePath: string) => filePath && isAllowedImageFile(filePath));
+
+  return {
+    files,
+    scanned: payload.length,
+    source: {
+      repository: repository.fullName,
+      branch,
+      directory
+    }
+  };
+}
+
 export async function importMediaAssetsZip(
   buffer: Buffer
 ): Promise<MediaAssetZipImportResult> {
@@ -495,5 +590,25 @@ export async function importMediaAssetsFromUrls(
     imported: items.filter((item) => item.status !== "skipped").length,
     skipped: items.filter((item) => item.status === "skipped").length,
     items
+  };
+}
+
+export async function importMediaAssetsFromGithub(
+  input: MediaAssetGithubImportInput
+): Promise<MediaAssetGithubImportResult> {
+  const github = await listGithubImageFiles(input);
+  if (!github.files.length) {
+    throw new Error("Aucune image compatible trouvee dans ce dossier GitHub.");
+  }
+
+  const result = await importMediaAssetsFromUrls({
+    baseUrl: input.baseUrl,
+    files: github.files
+  });
+
+  return {
+    ...result,
+    scanned: github.scanned,
+    source: github.source
   };
 }

@@ -56,6 +56,10 @@ const els = {
   mediaUrlBase: document.getElementById("mediaUrlBase"),
   mediaUrlFiles: document.getElementById("mediaUrlFiles"),
   mediaUrlImportButton: document.getElementById("mediaUrlImportButton"),
+  mediaGithubRepository: document.getElementById("mediaGithubRepository"),
+  mediaGithubBranch: document.getElementById("mediaGithubBranch"),
+  mediaGithubDirectory: document.getElementById("mediaGithubDirectory"),
+  mediaGithubImportButton: document.getElementById("mediaGithubImportButton"),
   mediaImportResult: document.getElementById("mediaImportResult"),
   mediaSaveButton: document.getElementById("mediaSaveButton"),
   mediaResetButton: document.getElementById("mediaResetButton"),
@@ -212,6 +216,7 @@ function setBusyButtons(isBusy) {
   els.npMultiSaveButton.disabled = isBusy;
   els.mediaZipImportButton.disabled = isBusy;
   els.mediaUrlImportButton.disabled = isBusy;
+  els.mediaGithubImportButton.disabled = isBusy;
   els.mediaSaveButton.disabled = isBusy;
   els.mediaResetButton.disabled = isBusy;
   els.vmLoadButton.disabled = isBusy;
@@ -723,10 +728,17 @@ function renderMediaImportResult(result) {
   const items = result?.items ?? [];
   const visibleItems = items.slice(0, 8);
   const hiddenCount = Math.max(0, items.length - visibleItems.length);
+  const sourceLabel = result?.source
+    ? `<span>Source: ${html(result.source.repository)} / ${html(result.source.branch)}${result.source.directory ? ` / ${html(result.source.directory)}` : ""}</span>`
+    : "";
+  const scannedLabel = Number.isFinite(Number(result?.scanned))
+    ? `<span>${Number(result.scanned).toLocaleString("fr-FR")} element(s) scanne(s)</span>`
+    : "";
 
   els.mediaImportResult.classList.add("is-visible");
   els.mediaImportResult.innerHTML = `
     <strong>${Number(result?.imported || 0).toLocaleString("fr-FR")} image(s) importee(s), ${Number(result?.skipped || 0).toLocaleString("fr-FR")} ignoree(s)</strong>
+    ${sourceLabel || scannedLabel ? `<div class="media-import-source">${sourceLabel}${scannedLabel}</div>` : ""}
     <div class="media-import-items">
       ${visibleItems.map((item) => `
         <span class="media-import-item is-${html(item.status)}">
@@ -806,6 +818,59 @@ async function importMediaUrls(event) {
     });
 
     renderMediaImportResult(response.data);
+    resetMediaForm();
+    await loadMediaAssets();
+    els.mediaStatus.textContent = "Importe";
+  } catch (error) {
+    els.mediaStatus.textContent = "Erreur";
+    els.mediaImportResult.classList.add("is-visible", "is-error");
+    els.mediaImportResult.textContent = error.message;
+  } finally {
+    setBusyButtons(false);
+  }
+}
+
+async function importMediaGithub(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+
+  const baseUrl = els.mediaUrlBase.value.trim();
+  const repository = els.mediaGithubRepository.value.trim();
+  const branch = els.mediaGithubBranch.value.trim() || "main";
+  const directory = els.mediaGithubDirectory.value.trim();
+  if (!baseUrl || !repository) {
+    els.mediaStatus.textContent = "Erreur";
+    els.mediaImportResult.classList.add("is-visible", "is-error");
+    els.mediaImportResult.textContent = "URL Render Static et depot GitHub obligatoires.";
+    return;
+  }
+
+  els.mediaStatus.textContent = "Scan GitHub";
+  els.mediaImportResult.classList.remove("is-error");
+  setBusyButtons(true);
+
+  try {
+    const response = await getJson("/media-library/admin/assets/import-github", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        baseUrl,
+        repository,
+        branch,
+        directory
+      })
+    });
+
+    renderMediaImportResult(response.data);
+    const fileNames = (response.data?.items ?? [])
+      .filter((item) => item.status !== "skipped")
+      .map((item) => item.fileName)
+      .join("\n");
+    if (fileNames) {
+      els.mediaUrlFiles.value = fileNames;
+    }
     resetMediaForm();
     await loadMediaAssets();
     els.mediaStatus.textContent = "Importe";
@@ -2716,6 +2781,7 @@ els.mediaAssetList.addEventListener("click", handleMediaAssetAction);
 els.mediaSearch.addEventListener("input", loadMediaAssets);
 els.mediaZipImportButton.addEventListener("click", importMediaZip);
 els.mediaUrlImportButton.addEventListener("click", importMediaUrls);
+els.mediaGithubImportButton.addEventListener("click", importMediaGithub);
 els.vmEngineSelect.addEventListener("change", loadVisualMappings);
 els.vmLoadButton.addEventListener("click", loadVisualMappings);
 els.vmAutoMatchButton.addEventListener("click", autoMatchVisualMappings);
