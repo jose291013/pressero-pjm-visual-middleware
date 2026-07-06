@@ -165,3 +165,9 @@ The public Pressero endpoints now allow cross-origin reads for the visual runtim
 Visual choices expose `valueAliases` so the browser script can match PJM values, PJM IDs and labels against the actual native Pressero select option values.
 
 For live PJM pricing, the provider now forces the Pressero `body.quantity` value into the real PJM quantity parameter. If Pressero sends the PJM quantity option with an empty or zero value, the middleware overrides that value before calling PJM `optionsandprice`.
+
+## Sprint 46 Pressero Re-render And Minimum Quantity
+
+The visual runtime now survives Pressero internal DOM refreshes. It attaches a guarded `MutationObserver` to `document.body` and re-renders the visual option buttons after Pressero replaces the native option block.
+
+For live PJM pricing, if PJM returns a minimum quantity error such as `must be between 25 and ...`, the middleware extracts the minimum value and retries `optionsandprice` once with that quantity when the Pressero quantity is below the PJM minimum.

@@ -315,7 +315,8 @@ function buildResolvedPjmEngineValue(
 
 function buildPjmEngineValues(
   config: PricingConfigRecord,
-  body: PresseroPricingRequestBody
+  body: PresseroPricingRequestBody,
+  quantityOverride?: number
 ) {
   const selectedOptions = readSelectedOptions(body);
   const values: PjmEngineOptionValue[] = selectedOptions.map((option) =>
@@ -324,7 +325,7 @@ function buildPjmEngineValues(
   const quantityOption = findQuantityOption(config);
 
   if (quantityOption) {
-    const quantity = String(readPresseroPricingQuantity(body));
+    const quantity = String(quantityOverride ?? readPresseroPricingQuantity(body));
     const quantityKey = normalizeComparable(quantityOption.pjmId);
     const existingQuantity = values.find((value) => {
       return normalizeComparable(value.Key) === quantityKey ||
@@ -343,6 +344,14 @@ function buildPjmEngineValues(
   }
 
   return values;
+}
+
+function readMinimumQuantityFromPjmError(message: string) {
+  const match = message.match(/between\s+(\d+(?:[.,]\d+)?)\s+and/i);
+  if (!match) return null;
+
+  const minimum = Number(match[1].replace(",", "."));
+  return Number.isFinite(minimum) && minimum > 0 ? minimum : null;
 }
 
 function readCombinationSelections(combination: {
@@ -474,6 +483,7 @@ async function calculatePjmLivePrice(
   body: PresseroPricingRequestBody
 ) {
   const client = createPjmClientFromEnv();
+  const requestedQuantity = readPresseroPricingQuantity(body);
   const response = await client.getOptionsAndPrice(
     config.enginePriceGroupIntegrationId,
     buildPjmEngineValues(config, body)
@@ -481,6 +491,25 @@ async function calculatePjmLivePrice(
   const pjmError = readPjmError(response);
 
   if (pjmError) {
+    const minimumQuantity = readMinimumQuantityFromPjmError(pjmError);
+    if (minimumQuantity !== null && requestedQuantity < minimumQuantity) {
+      const retryResponse = await client.getOptionsAndPrice(
+        config.enginePriceGroupIntegrationId,
+        buildPjmEngineValues(config, body, minimumQuantity)
+      );
+      const retryError = readPjmError(retryResponse);
+      if (retryError) {
+        throw new Error(retryError);
+      }
+
+      const retryPrice = readPjmPrice(retryResponse);
+      if (retryPrice === null) {
+        throw new Error("PJM n'a pas retourne de prix exploitable.");
+      }
+
+      return retryPrice;
+    }
+
     throw new Error(pjmError);
   }
 

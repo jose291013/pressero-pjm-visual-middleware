@@ -9,7 +9,10 @@
   var rootId = "pressero-pjm-visual-configurator";
   var state = {
     config: null,
-    bindings: []
+    bindings: [],
+    renderTimer: null,
+    observer: null,
+    isRendering: false
   };
 
   function normalize(value) {
@@ -79,7 +82,8 @@
   }
 
   function findInsertAnchor() {
-    return document.getElementById("calcParmInputs") ||
+    return document.querySelector("[data-pressero-pjm-visual-anchor]") ||
+      document.getElementById("calcParmInputs") ||
       document.querySelector("[id*='pricing'], [class*='pricing']") ||
       document.querySelector("form") ||
       document.body.firstElementChild;
@@ -292,6 +296,7 @@
   }
 
   function renderConfig(config) {
+    state.isRendering = true;
     var root = ensureRoot();
     root.innerHTML = "";
     state.bindings = [];
@@ -313,6 +318,41 @@
     }
 
     root.hidden = false;
+    window.setTimeout(function () {
+      state.isRendering = false;
+    }, 0);
+  }
+
+  function scheduleRender() {
+    if (!state.config || state.isRendering) return;
+
+    window.clearTimeout(state.renderTimer);
+    state.renderTimer = window.setTimeout(function () {
+      renderConfig(state.config);
+    }, 250);
+  }
+
+  function observePresseroRerenders() {
+    if (state.observer || !document.body || typeof MutationObserver !== "function") {
+      return;
+    }
+
+    state.observer = new MutationObserver(function (mutations) {
+      if (state.isRendering) return;
+
+      var shouldRender = mutations.some(function (mutation) {
+        return mutation.type === "childList" &&
+          (mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0);
+      });
+
+      if (shouldRender) {
+        scheduleRender();
+      }
+    });
+    state.observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
   }
 
   async function load() {
@@ -331,6 +371,7 @@
     var payload = await response.json();
     state.config = payload.data || payload;
     renderConfig(state.config);
+    observePresseroRerenders();
   }
 
   onReady(function () {
