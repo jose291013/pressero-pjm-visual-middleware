@@ -68,6 +68,7 @@
       ".ppv-choice img{display:block;width:76px;height:76px;object-fit:contain;pointer-events:none}",
       ".ppv-choice span{font-size:13px;line-height:1.2;font-weight:600}",
       ".ppv-native-hidden{position:absolute!important;left:-99999px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}",
+      ".ppv-generic-quantity-hidden{display:none!important}",
       ".ppv-warning{font-size:13px;color:#b45309;margin:6px 0 0 0}"
     ].join("");
     document.head.appendChild(style);
@@ -201,6 +202,44 @@
     }
   }
 
+  function isQuantityOption(option) {
+    var label = normalize([
+      option.label,
+      option.name,
+      option.optionType
+    ].join(" "));
+    return label.indexOf("quantity") >= 0 ||
+      label.indexOf("quantite") >= 0 ||
+      label.indexOf("exemplaire") >= 0;
+  }
+
+  function hideGenericQuantityField() {
+    var inputs = Array.prototype.slice.call(
+      document.querySelectorAll("input:not([type='hidden']), select")
+    );
+
+    inputs.forEach(function (input) {
+      var group = nativeFieldGroup(input);
+      var label = normalize(labelNearField(input));
+      if (group && label === "quantity") {
+        group.classList.add("ppv-generic-quantity-hidden");
+      }
+    });
+  }
+
+  function hasPjmQuantityField() {
+    var inputs = Array.prototype.slice.call(
+      document.querySelectorAll("input:not([type='hidden']), select")
+    );
+
+    return inputs.some(function (input) {
+      var label = normalize(labelNearField(input));
+      return label !== "quantity" &&
+        (label.indexOf("quantite") >= 0 ||
+          label.indexOf("exemplaire") >= 0);
+    });
+  }
+
   function setNativeValue(field, value) {
     field.value = String(value);
     Array.prototype.forEach.call(field.options || [], function (option) {
@@ -309,6 +348,10 @@
     (config.options || []).forEach(function (option) {
       renderOption(option, root);
     });
+
+    if ((config.options || []).some(isQuantityOption) || hasPjmQuantityField()) {
+      hideGenericQuantityField();
+    }
 
     if (!state.bindings.length) {
       var warning = document.createElement("p");

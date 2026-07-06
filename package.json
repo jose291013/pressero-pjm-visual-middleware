@@ -55,6 +55,7 @@
     "test:sprint45": "node scripts/test-sprint-45-pressero-quantity-and-visual-cors.mjs",
     "test:sprint46": "node scripts/test-sprint-46-pressero-rerender-and-min-quantity.mjs",
     "test:sprint47": "node scripts/test-sprint-47-pressero-free-quantity-option.mjs",
+    "test:sprint48": "node scripts/test-sprint-48-pressero-numeric-option-and-generic-quantity.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

@@ -177,3 +177,9 @@ For live PJM pricing, if PJM returns a minimum quantity error such as `must be b
 `GetOptionsForProduct` now returns PJM free-input parameters as Pressero pricing parameters with `Options: []`. This allows quantity-like PJM parameters, such as `Quantite d'exemplaires`, to be displayed by Pressero instead of relying only on the generic external-pricing `Quantity` field.
 
 When calculating live PJM prices, the middleware now prefers the value received for the real PJM quantity option. The generic Pressero quantity is only used as a fallback.
+
+## Sprint 48 Pressero Numeric Option And Generic Quantity
+
+The provider now accepts Pressero option values sent as strings, numbers or booleans, then converts them to strings before building the PJM payload. This prevents free-input PJM fields such as `Quantite d'exemplaires` from being dropped when Pressero sends numeric values.
+
+The visual runtime hides the generic external-pricing `Quantity` field when a real PJM quantity field is present in the page. The PJM quantity field remains visible and native.

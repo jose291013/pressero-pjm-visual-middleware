@@ -179,13 +179,16 @@ function readSelectedOptions(body: PresseroPricingRequestBody) {
       const record = readObject(option);
       const key = record.Key ?? record.key ?? record.ID ?? record.id;
       const value = record.Value ?? record.value;
-      if (typeof key !== "string" || typeof value !== "string") {
+      if (
+        typeof key !== "string" ||
+        !["string", "number", "boolean"].includes(typeof value)
+      ) {
         return null;
       }
 
       return {
         Key: key,
-        Value: value
+        Value: String(value)
       };
     })
     .filter((option): option is PresseroPricingParameterOption => Boolean(option));
