@@ -414,28 +414,85 @@ function readPjmChoiceLabel(choice: PjmEngineChoiceResponse) {
     "";
 }
 
+function readBooleanFlag(
+  value: Record<string, unknown>,
+  keys: string[]
+) {
+  for (const key of keys) {
+    const flag = value[key];
+    if (typeof flag === "boolean") return flag;
+    if (typeof flag === "string") {
+      const normalized = flag.trim().toLowerCase();
+      if (["true", "1", "yes", "y"].includes(normalized)) return true;
+      if (["false", "0", "no", "n"].includes(normalized)) return false;
+    }
+  }
+
+  return null;
+}
+
+function pjmEntityIsUnavailable(
+  entity: PjmEngineOptionResponse | PjmEngineChoiceResponse
+) {
+  const record = entity as Record<string, unknown>;
+  const suppressed = readBooleanFlag(record, [
+    "Suppress",
+    "suppress",
+    "Suppressed",
+    "suppressed",
+    "IsSuppressed",
+    "isSuppressed",
+    "Hidden",
+    "hidden",
+    "IsHidden",
+    "isHidden",
+    "Disabled",
+    "disabled",
+    "IsDisabled",
+    "isDisabled"
+  ]);
+  if (suppressed === true) return true;
+
+  const available = readBooleanFlag(record, [
+    "Enabled",
+    "enabled",
+    "IsEnabled",
+    "isEnabled",
+    "Available",
+    "available",
+    "IsAvailable",
+    "isAvailable",
+    "Visible",
+    "visible",
+    "IsVisible",
+    "isVisible"
+  ]);
+
+  return available === false;
+}
+
 function readPjmOptionChoices(option: PjmEngineOptionResponse) {
-  return option.Options ??
+  const choices = option.Options ??
     option.options ??
     option.Values ??
     option.values ??
     option.Choices ??
     option.choices ??
     [];
+
+  return choices.filter((choice) => !pjmEntityIsUnavailable(choice));
 }
 
 function readPjmOptionsArray(response: PjmEngineOptionsResponse) {
-  if (Array.isArray(response)) {
-    return response;
-  }
-
-  return response.Options ??
+  const options = Array.isArray(response) ? response : response.Options ??
     response.options ??
     response.EngineOptions ??
     response.engineOptions ??
     response.Values ??
     response.values ??
     [];
+
+  return options.filter((option) => !pjmEntityIsUnavailable(option));
 }
 
 function pjmOptionMatchesValue(

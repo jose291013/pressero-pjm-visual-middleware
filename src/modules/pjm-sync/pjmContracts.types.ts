@@ -114,6 +114,20 @@ export type PjmEngineChoiceResponse = {
   displayName?: string;
   Title?: string;
   title?: string;
+  Suppress?: boolean;
+  suppress?: boolean;
+  Suppressed?: boolean;
+  suppressed?: boolean;
+  Hidden?: boolean;
+  hidden?: boolean;
+  Disabled?: boolean;
+  disabled?: boolean;
+  Enabled?: boolean;
+  enabled?: boolean;
+  Available?: boolean;
+  available?: boolean;
+  Visible?: boolean;
+  visible?: boolean;
 };
 
 export type PjmEngineOptionResponse = {
@@ -137,6 +151,18 @@ export type PjmEngineOptionResponse = {
   options?: PjmEngineChoiceResponse[];
   Suppress?: boolean;
   suppress?: boolean;
+  Suppressed?: boolean;
+  suppressed?: boolean;
+  Hidden?: boolean;
+  hidden?: boolean;
+  Disabled?: boolean;
+  disabled?: boolean;
+  Enabled?: boolean;
+  enabled?: boolean;
+  Available?: boolean;
+  available?: boolean;
+  Visible?: boolean;
+  visible?: boolean;
 };
 
 export type PjmEngineOptionsResponse =

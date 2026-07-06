@@ -206,3 +206,9 @@ The middleware ne remplace plus the native PJM quantity value with the generic e
 `GetOptionsForProduct` now receives the current Pressero payload and calls PJM `options` for standard live PJM products. The returned Pressero `PricingParameter[]` is rebuilt from PJM's live compatible options instead of always using the synchronized database snapshot.
 
 This allows Pressero option refreshes to reflect PJM incompatibilites after each user selection. The synchronized options remain a fallback when PJM returns no usable live options.
+
+## Sprint 52 Filter Incompatible Options
+
+The Pressero provider now filters PJM live options and choices marked as unavailable before returning `PricingParameter[]` to Pressero. Flags such as `Suppress`, `Hidden`, `Disabled`, `Available=false`, `Enabled=false` and `Visible=false` remove the option or choice from the user-facing list.
+
+The same filtering applies before `optionsandprice`, so a previously selected value that PJM now marks as incompatible is not kept in the calculation payload.
