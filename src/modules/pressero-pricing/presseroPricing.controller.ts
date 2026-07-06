@@ -72,9 +72,10 @@ async function sendPresseroPricingJson(req: Request, res: Response) {
     }
 
     try {
-      const options = await buildPresseroOptionsForProduct(productId);
+      const options = await buildPresseroOptionsForProduct(productId, body);
       logPresseroPricingEvent("options-response", {
         productId,
+        selectedOptionCount: requestSummary.selectedOptionCount,
         optionCount: options.length,
         choiceCount: options.reduce((total, option) => total + option.Options.length, 0)
       });
@@ -143,9 +144,10 @@ export async function getPresseroOptionsForProduct(req: Request, res: Response) 
   }
 
   try {
-    const options = await buildPresseroOptionsForProduct(productId);
+    const options = await buildPresseroOptionsForProduct(productId, body);
     logPresseroPricingEvent("options-response", {
       productId,
+      selectedOptionCount: requestSummary.selectedOptionCount,
       optionCount: options.length,
       choiceCount: options.reduce((total, option) => total + option.Options.length, 0)
     });

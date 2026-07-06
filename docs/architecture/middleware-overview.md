@@ -200,3 +200,9 @@ The live PJM pricing provider now mirrors the `saas-orchestrator` flow:
 - call PJM `optionsandprice` with the sanitized values.
 
 The middleware ne remplace plus the native PJM quantity value with the generic external-pricing `Quantity` field and no longer retries with a guessed minimum quantity. PJM remains the source for incompatibilities, free-input validation and final price calculation.
+
+## Sprint 51 Live Options Compatibility
+
+`GetOptionsForProduct` now receives the current Pressero payload and calls PJM `options` for standard live PJM products. The returned Pressero `PricingParameter[]` is rebuilt from PJM's live compatible options instead of always using the synchronized database snapshot.
+
+This allows Pressero option refreshes to reflect PJM incompatibilites after each user selection. The synchronized options remain a fallback when PJM returns no usable live options.

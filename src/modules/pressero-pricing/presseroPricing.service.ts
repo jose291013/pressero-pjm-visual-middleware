@@ -62,6 +62,7 @@ const pricingConfigInclude = {
 type PricingConfigRecord = Prisma.PresseroProductConfigGetPayload<{
   include: typeof pricingConfigInclude;
 }>;
+type PricingConfigOptionsRecord = Pick<PricingConfigRecord, "priceEngine">;
 
 export function getPresseroPricingModuleName() {
   return "pressero-pricing";
@@ -371,7 +372,7 @@ function readSelectedQuantityValue(
 }
 
 function buildPjmEngineValues(
-  _config: PricingConfigRecord,
+  _config: unknown,
   body: PresseroPricingRequestBody
 ) {
   return readSelectedOptions(body).map((option) => ({
@@ -493,6 +494,70 @@ function sanitizePjmEngineValuesAgainstOptions(
       Value: readPjmChoiceValue(selectedChoice)
     }];
   });
+}
+
+function findConfigOptionByPjmId(
+  config: PricingConfigOptionsRecord,
+  pjmId: string
+) {
+  return config.priceEngine.options.find((option) =>
+    comparableMatches(option.pjmId, pjmId) ||
+    comparableMatches(option.name, pjmId) ||
+    comparableMatches(option.displayName, pjmId)
+  );
+}
+
+function findConfigChoiceByPjmValue(
+  option: PricingConfigRecord["priceEngine"]["options"][number] | undefined,
+  pjmValue: string
+) {
+  if (!option) return null;
+
+  return option.choices.find((choice) =>
+    comparableMatches(choice.value, pjmValue) ||
+    comparableMatches(choice.pjmId, pjmValue) ||
+    comparableMatches(choice.name, pjmValue) ||
+    comparableMatches(choice.normalizedName, pjmValue)
+  ) ?? null;
+}
+
+function buildPresseroOptionsFromPjmResponse(
+  config: PricingConfigOptionsRecord,
+  optionsResponse: PjmEngineOptionsResponse
+): PresseroPricingParameter[] {
+  return readPjmOptionsArray(optionsResponse).flatMap((liveOption) => {
+    const optionId = readPjmOptionId(liveOption);
+    if (!optionId) return [];
+
+    const configOption = findConfigOptionByPjmId(config, optionId);
+    const choices = readPjmOptionChoices(liveOption).flatMap((choice) => {
+      const choiceValue = readPjmChoiceValue(choice);
+      if (!choiceValue) return [];
+
+      const configChoice = findConfigChoiceByPjmValue(configOption, choiceValue);
+      return [{
+        Key: readPjmChoiceLabel(choice) || configChoice?.name || choiceValue,
+        Value: choiceValue
+      }];
+    });
+
+    return [{
+      ID: optionId,
+      Label:
+        readPjmOptionLabel(liveOption) ||
+        configOption?.displayName ||
+        configOption?.name ||
+        optionId,
+      Options: choices
+    }];
+  });
+}
+
+function summarizePjmValues(values: PjmEngineOptionValue[]) {
+  return values.map((value) => ({
+    Key: String(value.Key ?? value.Name ?? "").slice(0, 80),
+    Value: String(value.Value ?? "").slice(0, 80)
+  }));
 }
 
 function readCombinationSelections(combination: {
@@ -639,7 +704,9 @@ async function calculatePjmLivePrice(
     mode: "options-then-optionsandprice",
     initialValueCount: initialValues.length,
     refreshedOptionCount: readPjmOptionsArray(refreshedOptions).length,
-    sanitizedValueCount: sanitizedValues.length
+    sanitizedValueCount: sanitizedValues.length,
+    initialValues: summarizePjmValues(initialValues),
+    sanitizedValues: summarizePjmValues(sanitizedValues)
   }));
 
   const response = await client.getOptionsAndPrice(
@@ -742,7 +809,8 @@ export function readPresseroProviderMode(
 }
 
 export async function buildPresseroOptionsForProduct(
-  productId: string
+  productId: string,
+  body: PresseroPricingRequestBody = {}
 ): Promise<PresseroPricingParameter[]> {
   const config = await prisma.presseroProductConfig.findFirst({
     where: {
@@ -770,6 +838,23 @@ export async function buildPresseroOptionsForProduct(
 
   if (!config) {
     throw new Error("MIS Product ID introuvable ou inactif dans le middleware.");
+  }
+
+  if ((config.pricingMode as PresseroPricingMode) !== "negotiated") {
+    const client = createPjmClientFromEnv();
+    const initialValues = buildPjmEngineValues(config, body);
+    const refreshedOptions = await client.getEngineOptions(
+      config.enginePriceGroupIntegrationId,
+      initialValues
+    );
+    const liveOptions = buildPresseroOptionsFromPjmResponse(
+      config,
+      refreshedOptions
+    );
+
+    if (liveOptions.length) {
+      return liveOptions;
+    }
   }
 
   return config.priceEngine.options
