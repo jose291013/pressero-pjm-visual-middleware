@@ -46,6 +46,7 @@
     "test:sprint36": "node scripts/test-sprint-36-public-visual-config.mjs",
     "test:sprint37": "node scripts/test-sprint-37-media-url-import.mjs",
     "test:sprint38": "node scripts/test-sprint-38-media-github-import.mjs",
+    "test:sprint39": "node scripts/test-sprint-39-pressero-json-pricing.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

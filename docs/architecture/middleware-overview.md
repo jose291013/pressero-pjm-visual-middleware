@@ -86,3 +86,21 @@ The `MIS Product ID price 1` value saved in Pressero resolves to a `PresseroProd
 Image URLs that are already absolute, such as S3 or CloudFront URLs, are returned unchanged. Local `/public/media/assets/...` URLs are expanded using the request base URL, which allows Render to serve absolute image URLs.
 
 This endpoint does not calculate price. It prepares the visual layer; PJM/Pressero native fields and recalculation remain authoritative.
+
+## Sprint 39 Pressero JSON Pricing Diagnostic
+
+The middleware now exposes the first fixed JSON endpoint intended for the Pressero external pricing plugin:
+
+```text
+POST /pressero-pricing/json
+```
+
+This endpoint is diagnostic only. It returns a fixed price based on `pricingParameters.Q1` so the integration can confirm the response format expected by Pressero before PJM or negotiated-price logic is attached.
+
+The URL configured in Pressero should be fixed at the plugin level:
+
+```text
+https://pressero-pjm-visual-middleware.onrender.com/pressero-pricing/json
+```
+
+The `MIS Product ID price 1` remains configured on each Pressero product. It is not part of this endpoint URL; the middleware will read it from the future Pressero pricing payload once the exact field is confirmed.
