@@ -17,17 +17,13 @@ Or PJM expose la quantite comme une option moteur, pas comme `Q1`. Le middleware
 - les options PJM a choix avec leurs choix actifs ;
 - les parametres libres PJM avec `Options: []`.
 
-Le calcul de prix lit ensuite la quantite dans cet ordre :
-
-1. valeur recue dans le vrai parametre PJM de quantite ;
-2. champ quantite generique Pressero ;
-3. fallback interne.
+Le calcul de prix conserve ensuite les couples `{ Key, Value }` recus par Pressero. Depuis le Sprint 50, le middleware ne remplace plus la valeur du vrai parametre PJM par le champ generique `Quantity`.
 
 ## Resultat attendu
 
 Pressero doit pouvoir afficher un champ pour `Quantite d'exemplaires`.
 
-Si l'utilisateur renseigne cette valeur, le middleware l'envoie a PJM dans `optionsandprice` sur le vrai `Key` du moteur PJM.
+Si l'utilisateur renseigne cette valeur, Pressero la renvoie comme option native. Le middleware l'envoie d'abord a PJM en `options`, puis transmet a `optionsandprice` uniquement les valeurs encore compatibles.
 
 ## Test automatise
 

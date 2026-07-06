@@ -24,11 +24,11 @@ assert(
 
 const pricingService = read("src/modules/pressero-pricing/presseroPricing.service.ts");
 [
-  "readMinimumQuantityFromPjmError",
-  "quantityOverride?: number",
-  "requestedQuantity < minimumQuantity",
-  "buildPjmEngineValues(config, body, minimumQuantity)",
-  "retryPrice"
+  "buildPjmEngineValues",
+  "sanitizePjmEngineValuesAgainstOptions",
+  "getEngineOptions",
+  "getOptionsAndPrice",
+  "pjm-live-flow"
 ].forEach((needle) => assertIncludes(pricingService, needle, "presseroPricing.service.ts"));
 
 const visualScript = read("src/public/pressero/visual-configurator.js");
@@ -49,7 +49,7 @@ const sprintDoc = read("docs/sprints/sprint-46-pressero-rerender-and-min-quantit
   "Sprint 46",
   "re-render",
   "MutationObserver",
-  "quantite minimale",
+  "Sprint 50",
   "PJM"
 ].forEach((needle) => assertIncludes(sprintDoc, needle, "sprint doc"));
 

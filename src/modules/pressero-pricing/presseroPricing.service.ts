@@ -12,7 +12,12 @@ import type {
 } from "./presseroPricing.types.js";
 import { prisma } from "../../config/prisma.js";
 import { createPjmClientFromEnv } from "../pjm-sync/pjmClient.js";
-import type { PjmEngineOptionValue } from "../pjm-sync/pjmContracts.types.js";
+import type {
+  PjmEngineChoiceResponse,
+  PjmEngineOptionResponse,
+  PjmEngineOptionsResponse,
+  PjmEngineOptionValue
+} from "../pjm-sync/pjmContracts.types.js";
 
 const diagnosticUnitPrice = 12.34;
 const quantityOptionPatterns = [
@@ -327,25 +332,6 @@ function findConfigChoiceByPresseroValue(
   });
 }
 
-function buildResolvedPjmEngineValue(
-  config: PricingConfigRecord,
-  selectedOption: PresseroPricingParameterOption
-): PjmEngineOptionValue {
-  const option = findConfigOptionByPresseroKey(config, selectedOption.Key);
-  if (!option) {
-    return {
-      Key: selectedOption.Key,
-      Value: selectedOption.Value
-    };
-  }
-
-  const choice = findConfigChoiceByPresseroValue(option, selectedOption.Value);
-  return {
-    Key: option.pjmId,
-    Value: choice?.value || choice?.pjmId || selectedOption.Value
-  };
-}
-
 function selectedOptionMatchesConfigOption(
   config: PricingConfigRecord,
   selectedOption: PresseroPricingParameterOption,
@@ -384,58 +370,129 @@ function readSelectedQuantityValue(
   return Number.isFinite(quantity) && quantity > 0 ? quantity : null;
 }
 
-function readEffectivePjmQuantity(
-  config: PricingConfigRecord,
-  body: PresseroPricingRequestBody,
-  quantityOverride?: number
+function buildPjmEngineValues(
+  _config: PricingConfigRecord,
+  body: PresseroPricingRequestBody
 ) {
-  if (quantityOverride !== undefined) {
-    return quantityOverride;
-  }
-
-  const selectedQuantity = readSelectedQuantityValue(config, readSelectedOptions(body));
-  return selectedQuantity ?? readPresseroPricingQuantity(body);
+  return readSelectedOptions(body).map((option) => ({
+    Key: option.Key,
+    Value: option.Value
+  }));
 }
 
-function buildPjmEngineValues(
-  config: PricingConfigRecord,
-  body: PresseroPricingRequestBody,
-  quantityOverride?: number
-) {
-  const selectedOptions = readSelectedOptions(body);
-  const values: PjmEngineOptionValue[] = selectedOptions.map((option) =>
-    buildResolvedPjmEngineValue(config, option)
-  );
-  const quantityOption = findQuantityOption(config);
+function readPjmOptionId(option: PjmEngineOptionResponse) {
+  return option.Id ?? option.id ?? "";
+}
 
-  if (quantityOption) {
-    const quantity = String(readEffectivePjmQuantity(config, body, quantityOverride));
-    const quantityKey = normalizeComparable(quantityOption.pjmId);
-    const existingQuantity = values.find((value) => {
-      return normalizeComparable(value.Key) === quantityKey ||
-        normalizeComparable(value.Name) === quantityKey;
+function readPjmOptionLabel(option: PjmEngineOptionResponse) {
+  return option.Label ??
+    option.label ??
+    option.Name ??
+    option.name ??
+    option.DisplayName ??
+    option.displayName ??
+    option.Title ??
+    option.title ??
+    "";
+}
+
+function readPjmChoiceValue(choice: PjmEngineChoiceResponse) {
+  const value = choice.Value ?? choice.value ?? choice.Id ?? choice.id;
+  return value === undefined || value === null ? "" : String(value);
+}
+
+function readPjmChoiceLabel(choice: PjmEngineChoiceResponse) {
+  return choice.Key ??
+    choice.key ??
+    choice.Label ??
+    choice.label ??
+    choice.Text ??
+    choice.text ??
+    choice.Name ??
+    choice.name ??
+    "";
+}
+
+function readPjmOptionChoices(option: PjmEngineOptionResponse) {
+  return option.Options ??
+    option.options ??
+    option.Values ??
+    option.values ??
+    option.Choices ??
+    option.choices ??
+    [];
+}
+
+function readPjmOptionsArray(response: PjmEngineOptionsResponse) {
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  return response.Options ??
+    response.options ??
+    response.EngineOptions ??
+    response.engineOptions ??
+    response.Values ??
+    response.values ??
+    [];
+}
+
+function pjmOptionMatchesValue(
+  option: PjmEngineOptionResponse,
+  value: PjmEngineOptionValue
+) {
+  return [
+    readPjmOptionId(option),
+    readPjmOptionLabel(option)
+  ].some((candidate) =>
+    comparableMatches(value.Key, candidate) ||
+    comparableMatches(value.Name, candidate)
+  );
+}
+
+function sanitizePjmEngineValuesAgainstOptions(
+  values: PjmEngineOptionValue[],
+  optionsResponse: PjmEngineOptionsResponse
+) {
+  const liveOptions = readPjmOptionsArray(optionsResponse);
+  if (!liveOptions.length) {
+    return values;
+  }
+
+  return values.flatMap((value) => {
+    const liveOption = liveOptions.find((option) =>
+      pjmOptionMatchesValue(option, value)
+    );
+    if (!liveOption) return [];
+
+    const key = readPjmOptionId(liveOption);
+    if (!key) return [];
+
+    const choices = readPjmOptionChoices(liveOption);
+    if (!choices.length) {
+      const rawValue = value.Value;
+      if (rawValue === null || rawValue === undefined || String(rawValue).trim() === "") {
+        return [];
+      }
+
+      return [{
+        Key: key,
+        Value: String(rawValue)
+      }];
+    }
+
+    const selectedChoice = choices.find((choice) => {
+      return comparableMatches(value.Value, readPjmChoiceValue(choice)) ||
+        comparableMatches(value.Value, readPjmChoiceLabel(choice));
     });
 
-    if (existingQuantity) {
-      existingQuantity.Key = quantityOption.pjmId;
-      existingQuantity.Value = quantity;
-    } else {
-      values.push({
-        Key: quantityOption.pjmId,
-        Value: quantity
-      });
-    }
-  }
+    if (!selectedChoice) return [];
 
-  return values;
-}
-
-function readMinimumQuantityFromPjmError(message: string) {
-  const match = message.match(/between\s+(\d+(?:[.,]\d+)?)\s+and/i);
-  if (!match) return null;
-
-  const minimum = Number(match[1].replace(",", "."));
-  return Number.isFinite(minimum) && minimum > 0 ? minimum : null;
+    return [{
+      Key: key,
+      Value: readPjmChoiceValue(selectedChoice)
+    }];
+  });
 }
 
 function readCombinationSelections(combination: {
@@ -567,33 +624,31 @@ async function calculatePjmLivePrice(
   body: PresseroPricingRequestBody
 ) {
   const client = createPjmClientFromEnv();
-  const requestedQuantity = readEffectivePjmQuantity(config, body);
+  const initialValues = buildPjmEngineValues(config, body);
+  const refreshedOptions = await client.getEngineOptions(
+    config.enginePriceGroupIntegrationId,
+    initialValues
+  );
+  const sanitizedValues = sanitizePjmEngineValuesAgainstOptions(
+    initialValues,
+    refreshedOptions
+  );
+
+  console.info("[pressero-pricing] pjm-live-flow", JSON.stringify({
+    productId: config.misProductId,
+    mode: "options-then-optionsandprice",
+    initialValueCount: initialValues.length,
+    refreshedOptionCount: readPjmOptionsArray(refreshedOptions).length,
+    sanitizedValueCount: sanitizedValues.length
+  }));
+
   const response = await client.getOptionsAndPrice(
     config.enginePriceGroupIntegrationId,
-    buildPjmEngineValues(config, body)
+    sanitizedValues
   );
   const pjmError = readPjmError(response);
 
   if (pjmError) {
-    const minimumQuantity = readMinimumQuantityFromPjmError(pjmError);
-    if (minimumQuantity !== null && requestedQuantity < minimumQuantity) {
-      const retryResponse = await client.getOptionsAndPrice(
-        config.enginePriceGroupIntegrationId,
-        buildPjmEngineValues(config, body, minimumQuantity)
-      );
-      const retryError = readPjmError(retryResponse);
-      if (retryError) {
-        throw new Error(retryError);
-      }
-
-      const retryPrice = readPjmPrice(retryResponse);
-      if (retryPrice === null) {
-        throw new Error("PJM n'a pas retourne de prix exploitable.");
-      }
-
-      return retryPrice;
-    }
-
     throw new Error(pjmError);
   }
 

@@ -43,11 +43,11 @@ const configService = read("src/modules/pressero-config/presseroConfig.service.t
 
 const pricingService = read("src/modules/pressero-pricing/presseroPricing.service.ts");
 [
-  "findConfigOptionByPresseroKey",
-  "findConfigChoiceByPresseroValue",
-  "buildResolvedPjmEngineValue",
-  "existingQuantity.Value = quantity",
-  "Value: quantity"
+  "buildPjmEngineValues",
+  "Key: option.Key",
+  "Value: option.Value",
+  "sanitizePjmEngineValuesAgainstOptions",
+  "getEngineOptions"
 ].forEach((needle) => assertIncludes(pricingService, needle, "presseroPricing.service.ts"));
 
 const visualScript = read("src/public/pressero/visual-configurator.js");
@@ -64,6 +64,7 @@ const sprintDoc = read("docs/sprints/sprint-45-pressero-quantity-and-visual-cors
   "Sprint 45",
   "CORS",
   "Quantite PJM",
+  "Sprint 50",
   "valueAliases",
   "data-native-value"
 ].forEach((needle) => assertIncludes(sprintDoc, needle, "sprint doc"));

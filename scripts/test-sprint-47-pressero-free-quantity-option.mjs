@@ -25,11 +25,10 @@ assert(
 const pricingService = read("src/modules/pressero-pricing/presseroPricing.service.ts");
 [
   "isFreeInputOption",
-  "readSelectedQuantityValue",
-  "readEffectivePjmQuantity",
-  "selectedOptionMatchesConfigOption",
-  "selectedQuantity.Value",
-  "selectedQuantity ?? readPresseroPricingQuantity(body)",
+  "buildPjmEngineValues",
+  "Key: option.Key",
+  "Value: option.Value",
+  "sanitizePjmEngineValuesAgainstOptions",
   "if (!choices.length && !isFreeInputOption(option)) return null",
   "Options: choices"
 ].forEach((needle) => assertIncludes(pricingService, needle, "presseroPricing.service.ts"));
@@ -40,7 +39,8 @@ const sprintDoc = read("docs/sprints/sprint-47-pressero-free-quantity-option.md"
   "GetOptionsForProduct",
   "parametres libres",
   "Quantite d'exemplaires",
-  "Options: []"
+  "Options: []",
+  "Sprint 50"
 ].forEach((needle) => assertIncludes(sprintDoc, needle, "sprint doc"));
 
 console.log("Sprint 47 Pressero free quantity option checks passed.");

@@ -15,15 +15,13 @@ Lorsque Pressero remplace ses champs, le script re-rend l'interface visuelle ave
 
 ## Quantite minimale PJM
 
-Lorsque PJM retourne un message du type :
+Ce sprint avait introduit un retry automatique sur la quantite minimale PJM. Cette logique a ete abandonnee au Sprint 50, car elle remplacait trop fortement le comportement natif PJM/Pressero.
 
-```text
-Quantite d'exemplaires must be between 25 and 999999 with 0 decimal places.
-```
+Depuis le Sprint 50, le provider suit le flux du `saas-orchestrator` :
 
-le middleware lit la quantite minimale (`25`) et retente une fois l'appel `optionsandprice` avec cette valeur si la quantite Pressero recue est inferieure.
-
-Cette logique evite de bloquer le test produit sur une valeur generique Pressero initialisee a `1`, tout en laissant PJM rester la source des regles et du prix.
+- conserver les couples `{ Key, Value }` envoyes par Pressero ;
+- appeler PJM en `options` pour obtenir les options encore compatibles ;
+- appeler PJM en `optionsandprice` avec les valeurs compatibles.
 
 ## Test automatise
 
@@ -34,5 +32,5 @@ npm run test:sprint46
 ## Resultat attendu
 
 - les boutons images restent visibles apres les refreshs internes de Pressero ;
-- les erreurs PJM de quantite minimale ne renvoient plus automatiquement une reponse diagnostic a `0` ;
-- le calcul peut retourner `source: "pjmLive"` apres retry.
+- la correction visuelle reste active ;
+- le traitement des quantites et incompatibilites est delegue au flux PJM du Sprint 50.

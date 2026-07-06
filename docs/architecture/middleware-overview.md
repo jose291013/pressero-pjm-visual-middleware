@@ -164,19 +164,19 @@ The public Pressero endpoints now allow cross-origin reads for the visual runtim
 
 Visual choices expose `valueAliases` so the browser script can match PJM values, PJM IDs and labels against the actual native Pressero select option values.
 
-For live PJM pricing, the provider now forces the Pressero `body.quantity` value into the real PJM quantity parameter. If Pressero sends the PJM quantity option with an empty or zero value, the middleware overrides that value before calling PJM `optionsandprice`.
+This sprint originally forced the Pressero `body.quantity` value into the real PJM quantity parameter. That behavior is superseded by Sprint 50: the provider now preserves Pressero/PJM `{ Key, Value }` pairs and lets PJM validate them through the `options` flow.
 
 ## Sprint 46 Pressero Re-render And Minimum Quantity
 
 The visual runtime now survives Pressero internal DOM refreshes. It attaches a guarded `MutationObserver` to `document.body` and re-renders the visual option buttons after Pressero replaces the native option block.
 
-For live PJM pricing, if PJM returns a minimum quantity error such as `must be between 25 and ...`, the middleware extracts the minimum value and retries `optionsandprice` once with that quantity when the Pressero quantity is below the PJM minimum.
+The minimum-quantity retry behavior introduced here is superseded by Sprint 50. The runtime re-render fix remains active; quantity and compatibility handling now follow the PJM `options` then `optionsandprice` flow.
 
 ## Sprint 47 Pressero Free Quantity Option
 
 `GetOptionsForProduct` now returns PJM free-input parameters as Pressero pricing parameters with `Options: []`. This allows quantity-like PJM parameters, such as `Quantite d'exemplaires`, to be displayed by Pressero instead of relying only on the generic external-pricing `Quantity` field.
 
-When calculating live PJM prices, the middleware now prefers the value received for the real PJM quantity option. The generic Pressero quantity is only used as a fallback.
+When calculating live PJM prices, the middleware returns the free-input parameter to Pressero. Sprint 50 later changed calculation so the submitted PJM option value is preserved directly rather than merged with the generic Pressero quantity.
 
 ## Sprint 48 Pressero Numeric Option And Generic Quantity
 
@@ -189,3 +189,14 @@ The visual runtime hides the generic external-pricing `Quantity` field when a re
 Pressero can send option keys as composite values such as `prefix:optionId`. The pricing provider now matches both the full key and each colon-separated part when resolving Pressero options to PJM options and choices.
 
 This allows free-input PJM fields such as `Quantite d'exemplaires` to be correctly mapped even when Pressero wraps the PJM option ID in a composite key.
+
+## Sprint 50 Pressero PJM Options Sanitize Flow
+
+The live PJM pricing provider now mirrors the `saas-orchestrator` flow:
+
+- preserve the `{ Key, Value }` option pairs submitted by Pressero;
+- call PJM `options` first with those values;
+- sanitize the submitted values against the compatible options returned by PJM;
+- call PJM `optionsandprice` with the sanitized values.
+
+The middleware ne remplace plus the native PJM quantity value with the generic external-pricing `Quantity` field and no longer retries with a guessed minimum quantity. PJM remains the source for incompatibilities, free-input validation and final price calculation.

@@ -33,9 +33,9 @@ Le script `visual-configurator.js` utilise ces alias pour retrouver la vraie val
 
 Le provider JSON reconstruit les valeurs PJM depuis le modele synchronise.
 
-Si le vrai parametre PJM de quantite est deja present dans les options envoyees par Pressero, sa valeur est remplacee par la quantite Pressero recue dans `body.quantity`.
+Ce sprint avait d'abord force la quantite Pressero dans le vrai parametre PJM. Cette logique a ete remplacee au Sprint 50 : le middleware conserve maintenant les couples `{ Key, Value }` recus par Pressero, rafraichit les options PJM avec `options`, puis appelle `optionsandprice` avec les valeurs compatibles.
 
-Si le parametre n'est pas present, il est ajoute avec la quantite recue.
+La quantite PJM native n'est donc plus remplacee par le champ generique `Quantity`.
 
 ## Fichiers modifies
 
@@ -59,4 +59,4 @@ Dans Pressero :
 
 - les images peuvent charger la configuration publique depuis Render ;
 - les boutons images pilotent les vrais `select` Pressero ;
-- le prix live PJM recoit la vraie quantite dans le parametre `Quantite PJM`.
+- le prix live PJM recoit les vrais couples `{ Key, Value }` Pressero/PJM sans injection de quantite generique.
