@@ -36,6 +36,7 @@ export type PresseroVisualProductChoice = {
   id: string;
   pjmId: string;
   value: string;
+  valueAliases: string[];
   label: string;
   sortOrder: number;
   image: {

@@ -105,8 +105,30 @@
 
   function optionValues(select) {
     return Array.prototype.map.call(select.options || [], function (option) {
-      return normalize(option.value);
-    });
+      return [
+        normalize(option.value),
+        normalize(option.textContent)
+      ];
+    }).reduce(function (all, values) {
+      return all.concat(values);
+    }, []);
+  }
+
+  function choiceValues(choice) {
+    return [
+      choice.value,
+      choice.pjmId,
+      choice.label
+    ].concat(choice.valueAliases || [])
+      .map(normalize)
+      .filter(Boolean);
+  }
+
+  function nativeOptionTokens(option) {
+    return [
+      option.value,
+      option.textContent
+    ].map(normalize).filter(Boolean);
   }
 
   function labelForSelector(id) {
@@ -130,11 +152,10 @@
 
   function scoreSelectForOption(select, option) {
     var values = optionValues(select);
-    var choiceValues = option.choices.map(function (choice) {
-      return normalize(choice.value);
-    });
-    var matchingValues = choiceValues.filter(function (value) {
-      return values.indexOf(value) >= 0;
+    var matchingValues = option.choices.filter(function (choice) {
+      return choiceValues(choice).some(function (value) {
+        return values.indexOf(value) >= 0;
+      });
     }).length;
 
     var label = normalize(labelNearField(select));
@@ -184,20 +205,33 @@
     field.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
+  function resolveNativeValue(field, choice) {
+    var aliases = choiceValues(choice);
+    var nativeOption = Array.prototype.find.call(field.options || [], function (option) {
+      return nativeOptionTokens(option).some(function (value) {
+        return aliases.indexOf(value) >= 0;
+      });
+    });
+
+    return nativeOption ? nativeOption.value : choice.value;
+  }
+
   function syncSelection(section, field) {
     var value = String(field.value || "");
     section.querySelectorAll(".ppv-choice").forEach(function (button) {
-      var selected = button.getAttribute("data-value") === value;
+      var selected = button.getAttribute("data-native-value") === value;
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", selected ? "true" : "false");
     });
   }
 
   function renderChoice(choice, field, section) {
+    var nativeValue = resolveNativeValue(field, choice);
     var button = document.createElement("button");
     button.type = "button";
     button.className = "ppv-choice";
     button.setAttribute("data-value", choice.value);
+    button.setAttribute("data-native-value", nativeValue);
     button.setAttribute("aria-pressed", "false");
 
     if (choice.image && choice.image.url) {
@@ -214,7 +248,7 @@
 
     button.addEventListener("click", function (event) {
       event.preventDefault();
-      setNativeValue(field, choice.value);
+      setNativeValue(field, nativeValue);
       syncSelection(section, field);
     });
 

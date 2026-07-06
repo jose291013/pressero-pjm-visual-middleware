@@ -263,23 +263,83 @@ function findQuantityOption(config: PricingConfigRecord) {
   });
 }
 
+function findConfigOptionByPresseroKey(
+  config: PricingConfigRecord,
+  key: string
+) {
+  const normalizedKey = normalizeComparable(key);
+  return config.priceEngine.options.find((option) => {
+    return [
+      option.pjmId,
+      option.name,
+      option.displayName,
+      option.id
+    ].some((value) => normalizeComparable(value) === normalizedKey);
+  });
+}
+
+function findConfigChoiceByPresseroValue(
+  option: PricingConfigRecord["priceEngine"]["options"][number],
+  value: string
+) {
+  const normalizedValue = normalizeComparable(value);
+  return option.choices.find((choice) => {
+    return [
+      choice.value,
+      choice.pjmId,
+      choice.name,
+      choice.normalizedName,
+      choice.id
+    ].some((candidate) => normalizeComparable(candidate) === normalizedValue);
+  });
+}
+
+function buildResolvedPjmEngineValue(
+  config: PricingConfigRecord,
+  selectedOption: PresseroPricingParameterOption
+): PjmEngineOptionValue {
+  const option = findConfigOptionByPresseroKey(config, selectedOption.Key);
+  if (!option) {
+    return {
+      Key: selectedOption.Key,
+      Value: selectedOption.Value
+    };
+  }
+
+  const choice = findConfigChoiceByPresseroValue(option, selectedOption.Value);
+  return {
+    Key: option.pjmId,
+    Value: choice?.value || choice?.pjmId || selectedOption.Value
+  };
+}
+
 function buildPjmEngineValues(
   config: PricingConfigRecord,
   body: PresseroPricingRequestBody
 ) {
   const selectedOptions = readSelectedOptions(body);
-  const values: PjmEngineOptionValue[] = selectedOptions.map((option) => ({
-    Key: option.Key,
-    Value: option.Value
-  }));
-  const selectedKeys = new Set(values.map((value) => value.Key));
+  const values: PjmEngineOptionValue[] = selectedOptions.map((option) =>
+    buildResolvedPjmEngineValue(config, option)
+  );
   const quantityOption = findQuantityOption(config);
 
-  if (quantityOption && !selectedKeys.has(quantityOption.pjmId)) {
-    values.push({
-      Key: quantityOption.pjmId,
-      Value: readPresseroPricingQuantity(body)
+  if (quantityOption) {
+    const quantity = String(readPresseroPricingQuantity(body));
+    const quantityKey = normalizeComparable(quantityOption.pjmId);
+    const existingQuantity = values.find((value) => {
+      return normalizeComparable(value.Key) === quantityKey ||
+        normalizeComparable(value.Name) === quantityKey;
     });
+
+    if (existingQuantity) {
+      existingQuantity.Key = quantityOption.pjmId;
+      existingQuantity.Value = quantity;
+    } else {
+      values.push({
+        Key: quantityOption.pjmId,
+        Value: quantity
+      });
+    }
   }
 
   return values;

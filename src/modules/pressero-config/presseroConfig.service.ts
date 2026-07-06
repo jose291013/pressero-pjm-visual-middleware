@@ -237,6 +237,14 @@ function buildPublicUrl(url: string, publicBaseUrl: string) {
   }
 }
 
+function uniqueValues(values: Array<string | null | undefined>) {
+  return [...new Set(
+    values
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value))
+  )];
+}
+
 function serializeVisualOptions(
   config: PublicVisualConfigRecord,
   publicBaseUrl: string
@@ -253,6 +261,12 @@ function serializeVisualOptions(
             id: choice.id,
             pjmId: choice.pjmId,
             value: choice.value,
+            valueAliases: uniqueValues([
+              choice.value,
+              choice.pjmId,
+              choice.name,
+              choice.normalizedName
+            ]),
             label: choice.name,
             sortOrder: choice.sortOrder,
             image: {

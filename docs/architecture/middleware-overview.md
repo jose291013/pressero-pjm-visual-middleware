@@ -154,3 +154,14 @@ The Pressero pricing provider now resolves the product configuration from the `M
 - `negotiated` resolves the saved negotiated combination and interpolates between tiers.
 
 The public visual runtime `/public/pressero/visual-configurator.js` now loads the product visual config, renders mapped image choices, updates real Pressero selects and dispatches the native `change` event. It does not calculate price in the browser.
+
+## Sprint 45 Pressero Quantity And Visual CORS
+
+The public Pressero endpoints now allow cross-origin reads for the visual runtime:
+
+- `/public/pressero/...`
+- `/pressero-config/public/...`
+
+Visual choices expose `valueAliases` so the browser script can match PJM values, PJM IDs and labels against the actual native Pressero select option values.
+
+For live PJM pricing, the provider now forces the Pressero `body.quantity` value into the real PJM quantity parameter. If Pressero sends the PJM quantity option with an empty or zero value, the middleware overrides that value before calling PJM `optionsandprice`.

@@ -14,6 +14,24 @@ export function createApp() {
   const publicRoot = path.join(process.cwd(), "src", "public");
 
   app.disable("x-powered-by");
+  app.use((req, res, next) => {
+    const isPublicPresseroRequest =
+      req.path.startsWith("/public/pressero/") ||
+      req.path.startsWith("/pressero-config/public/");
+
+    if (isPublicPresseroRequest) {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+    }
+
+    if (isPublicPresseroRequest && req.method === "OPTIONS") {
+      res.status(204).end();
+      return;
+    }
+
+    next();
+  });
   app.use(express.json());
   app.use("/public/media/assets", express.static(env.media.assetsDir));
   app.use("/public", express.static(publicRoot));
