@@ -104,3 +104,22 @@ https://pressero-pjm-visual-middleware.onrender.com/pressero-pricing/json
 ```
 
 The `MIS Product ID price 1` remains configured on each Pressero product. It is not part of this endpoint URL; the middleware will read it from the future Pressero pricing payload once the exact field is confirmed.
+
+## Sprint 40 Pressero Provider Options
+
+The Pressero pricing URL remains unique, but the provider now supports the two Pressero pricing-service responsibilities:
+
+```text
+GetOptionsForProduct -> return PricingParameter[]
+GetPriceForProduct   -> return a pricing result
+```
+
+The middleware accepts both direct JSON calls on `/pressero-pricing/json` and method-style aliases such as `/pressero-pricing/json/GetOptionsForProduct`.
+
+For `GetOptionsForProduct`, the incoming `productID` is resolved as the Pressero `MIS Product ID`. The middleware loads the active `PresseroProductConfig`, then returns PJM option parameters using the documented Pressero shape:
+
+```text
+ID, Label, Options[{ Key, Value }]
+```
+
+The price response remains diagnostic until the next pricing sprint replaces it with PJM `options and price` for standard products and negotiated tier resolution for negotiated products.
