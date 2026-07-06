@@ -50,6 +50,7 @@
     "test:sprint40": "node scripts/test-sprint-40-pressero-provider-options.mjs",
     "test:sprint41": "node scripts/test-sprint-41-pressero-pricing-render-diagnostics.mjs",
     "test:sprint42": "node scripts/test-sprint-42-pressero-json-operation-product.mjs",
+    "test:sprint43": "node scripts/test-sprint-43-pressero-product-string.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

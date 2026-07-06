@@ -141,3 +141,7 @@ Render logs showed that Pressero JSON calls use a body shaped around `operation`
 The provider now inspects `operation` when detecting options versus price calls, and it also searches for the Pressero `MIS Product ID` inside the nested `product` object.
 
 Diagnostics now include `operation`, `productKeys` and `rawOptionCount` so the next Pressero test can reveal the exact option-call contract.
+
+## Sprint 43 Pressero Product String
+
+If Pressero sends `product` directly as a string, the provider now treats that string as the `MIS Product ID`. Diagnostics also include `productType` and `productPreview` to distinguish string payloads from object payloads.

@@ -56,6 +56,14 @@ function readProductIdFromSource(source: Record<string, unknown>) {
   ]);
 }
 
+function readProductIdFromValue(value: unknown) {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  return readProductIdFromSource(readObject(value));
+}
+
 function readOperationValue(value: unknown): string | null {
   if (typeof value === "string" && value.trim()) {
     return value.trim();
@@ -103,10 +111,10 @@ export function readPresseroProductId(
   const nestedData = readProductIdFromSource(readObject(body.data));
   if (nestedData) return nestedData;
 
-  const nestedProduct = readProductIdFromSource(readObject(body.product));
+  const nestedProduct = readProductIdFromValue(body.product);
   if (nestedProduct) return nestedProduct;
 
-  const nestedProductUpper = readProductIdFromSource(readObject(body.Product));
+  const nestedProductUpper = readProductIdFromValue(body.Product);
   if (nestedProductUpper) return nestedProductUpper;
 
   return null;
@@ -154,7 +162,8 @@ export function describePresseroPricingRequest(
 ) {
   const parameters = readPricingParameters(body);
   const selectedOptions = readSelectedOptions(body);
-  const product = readObject(body.product ?? body.Product);
+  const productValue = body.product ?? body.Product;
+  const product = readObject(productValue);
   const rawOptions = body.options ?? body.Options;
   const rawOptionsArray = Array.isArray(rawOptions) ? rawOptions : [];
 
@@ -166,6 +175,9 @@ export function describePresseroPricingRequest(
     quantity: readPresseroPricingQuantity(body),
     bodyKeys: Object.keys(body),
     queryKeys: Object.keys(query),
+    productType: Array.isArray(productValue) ? "array" : typeof productValue,
+    productPreview:
+      typeof productValue === "string" ? productValue.slice(0, 80) : null,
     productKeys: Object.keys(product),
     rawOptionCount: rawOptionsArray.length,
     pricingParameterKeys: Object.keys(parameters),
