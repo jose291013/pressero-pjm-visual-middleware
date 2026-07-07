@@ -600,14 +600,16 @@ async function filterPjmOptionChoicesByProbe(
   const choices = readPjmOptionChoices(option);
   if (!choices.length) return option;
 
+  if (!acceptedValues.length) {
+    return option;
+  }
+
   const optionKey = readPjmOptionId(option);
   if (!optionKey) return option;
 
-  const availableChoices: PjmEngineChoiceResponse[] = [];
-
-  for (const choice of choices) {
+  const probedChoices = await Promise.all(choices.map(async (choice) => {
     const candidateValue = readPjmChoiceValue(choice);
-    if (!candidateValue) continue;
+    if (!candidateValue) return null;
 
     const candidate = {
       Key: optionKey,
@@ -620,16 +622,22 @@ async function filterPjmOptionChoicesByProbe(
         [...acceptedValues, candidate]
       );
       const nextOption = findPjmOptionInList(readPjmOptionsArray(response), option);
-      if (!nextOption) continue;
+      if (!nextOption) return null;
 
       const stillAccepted = sanitizePjmValueAgainstOption(candidate, nextOption);
       if (stillAccepted) {
-        availableChoices.push(choice);
+        return choice;
       }
     } catch (_error) {
       // PJM rejected this candidate, so it should not be displayed.
     }
-  }
+
+    return null;
+  }));
+
+  const availableChoices = probedChoices.filter(
+    (choice): choice is PjmEngineChoiceResponse => Boolean(choice)
+  );
 
   return clonePjmOptionWithChoices(option, availableChoices);
 }

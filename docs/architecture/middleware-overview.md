@@ -224,3 +224,9 @@ Pressero options are built from these progressive responses, and `optionsandpric
 The static public `visual-config` still exposes the complete mapped image library for the product, but the browser runtime now filters buttons against the current native Pressero select options before rendering them.
 
 The backend also probes each candidate choice with PJM `options` using the previously accepted values plus that candidate. Choices that PJM rejects or does not keep available are removed before Pressero sees them. This keeps image buttons aligned with the native Pressero select and avoids showing incompatible choices.
+
+## Sprint 55 Neutral-Only Visual Groups And Faster Probes
+
+The browser runtime now hides an entire visual option group when only one neutral choice remains, such as `Aucun`, `none`, `sans` or `--Select--`. This removes labels like `Pelliculage` when the only remaining valid state is no finishing.
+
+PJM candidate probes are also executed in parallel per option, and probing is skipped when no previous accepted values exist. This keeps the compatibility check while reducing the delay introduced by sequential candidate calls.

@@ -278,6 +278,31 @@
     });
   }
 
+  function isNeutralChoice(choice) {
+    var values = choiceValues(choice).concat([
+      choice.label,
+      choice.name,
+      choice.value
+    ]).map(normalize).filter(Boolean);
+
+    return values.some(function (value) {
+      return [
+        "aucun",
+        "none",
+        "no",
+        "non",
+        "sans",
+        "select",
+        "--select--",
+        "choisir"
+      ].indexOf(value) >= 0;
+    });
+  }
+
+  function shouldHideVisualOption(choices) {
+    return choices.length === 1 && isNeutralChoice(choices[0]);
+  }
+
   function syncSelection(section, field) {
     var value = String(field.value || "");
     section.querySelectorAll(".ppv-choice").forEach(function (button) {
@@ -321,6 +346,12 @@
     var field = findNativeField(option);
     if (!field) return null;
 
+    var visibleChoices = visibleChoicesForNativeField(field, option.choices);
+    if (shouldHideVisualOption(visibleChoices)) {
+      markNativeField(field);
+      return null;
+    }
+
     var section = document.createElement("section");
     section.className = "ppv-section";
     section.setAttribute("data-option-id", option.pjmId);
@@ -332,7 +363,7 @@
 
     var grid = document.createElement("div");
     grid.className = "ppv-grid";
-    visibleChoicesForNativeField(field, option.choices).forEach(function (choice) {
+    visibleChoices.forEach(function (choice) {
       grid.appendChild(renderChoice(choice, field, section));
     });
 
