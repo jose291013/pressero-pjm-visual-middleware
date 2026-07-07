@@ -262,5 +262,23 @@ export class PjmClient {
 }
 
 export function createPjmClientFromEnv(): PjmClient {
-  return new PjmClient(readPjmClientConfigFromEnv());
+  const config = readPjmClientConfigFromEnv();
+  const cacheKey = JSON.stringify({
+    publicBaseUrl: config.publicBaseUrl,
+    username: config.username
+  });
+
+  if (!envPjmClientCache || envPjmClientCache.key !== cacheKey) {
+    envPjmClientCache = {
+      key: cacheKey,
+      client: new PjmClient(config)
+    };
+  }
+
+  return envPjmClientCache.client;
 }
+
+let envPjmClientCache: {
+  key: string;
+  client: PjmClient;
+} | null = null;

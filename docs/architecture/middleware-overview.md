@@ -230,3 +230,9 @@ The backend also probes each candidate choice with PJM `options` using the previ
 The browser runtime now hides an entire visual option group when only one neutral choice remains, such as `Aucun`, `none`, `sans` or `--Select--`. This removes labels like `Pelliculage` when the only remaining valid state is no finishing.
 
 PJM candidate probes are also executed in parallel per option, and probing is skipped when no previous accepted values exist. This keeps the compatibility check while reducing the delay introduced by sequential candidate calls.
+
+## Sprint 56 Fast Live Pricing
+
+Live PJM pricing now attempts one `optionsandprice` call with the `{ Key, Value }` pairs submitted by Pressero before using the slower progressive fallback. This keeps the normal price path short while preserving the compatibility safety path for rejected configurations.
+
+The middleware also keeps a singleton PJM client for env-based usage so the PJM auth token survives across requests. A short TTL cache deduplicates repeated `options` and `optionsandprice` calls triggered by Pressero refreshes.
