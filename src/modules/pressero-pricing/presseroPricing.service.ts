@@ -556,6 +556,21 @@ function sanitizePjmValueAgainstOption(
   };
 }
 
+function clonePjmOptionWithChoices(
+  option: PjmEngineOptionResponse,
+  choices: PjmEngineChoiceResponse[]
+): PjmEngineOptionResponse {
+  return {
+    ...option,
+    Options: choices,
+    options: choices,
+    Values: choices,
+    values: choices,
+    Choices: choices,
+    choices
+  };
+}
+
 function sanitizePjmEngineValuesAgainstOptions(
   values: PjmEngineOptionValue[],
   optionsResponse: PjmEngineOptionsResponse
@@ -574,6 +589,49 @@ function sanitizePjmEngineValuesAgainstOptions(
     const sanitized = sanitizePjmValueAgainstOption(value, liveOption);
     return sanitized ? [sanitized] : [];
   });
+}
+
+async function filterPjmOptionChoicesByProbe(
+  client: ReturnType<typeof createPjmClientFromEnv>,
+  config: Pick<PricingConfigRecord, "enginePriceGroupIntegrationId">,
+  option: PjmEngineOptionResponse,
+  acceptedValues: PjmEngineOptionValue[]
+) {
+  const choices = readPjmOptionChoices(option);
+  if (!choices.length) return option;
+
+  const optionKey = readPjmOptionId(option);
+  if (!optionKey) return option;
+
+  const availableChoices: PjmEngineChoiceResponse[] = [];
+
+  for (const choice of choices) {
+    const candidateValue = readPjmChoiceValue(choice);
+    if (!candidateValue) continue;
+
+    const candidate = {
+      Key: optionKey,
+      Value: candidateValue
+    };
+
+    try {
+      const response = await client.getEngineOptions(
+        config.enginePriceGroupIntegrationId,
+        [...acceptedValues, candidate]
+      );
+      const nextOption = findPjmOptionInList(readPjmOptionsArray(response), option);
+      if (!nextOption) continue;
+
+      const stillAccepted = sanitizePjmValueAgainstOption(candidate, nextOption);
+      if (stillAccepted) {
+        availableChoices.push(choice);
+      }
+    } catch (_error) {
+      // PJM rejected this candidate, so it should not be displayed.
+    }
+  }
+
+  return clonePjmOptionWithChoices(option, availableChoices);
 }
 
 async function resolveProgressivePjmOptions(
@@ -605,14 +663,21 @@ async function resolveProgressivePjmOptions(
     const stepOption = findPjmOptionInList(stepOptions, baseOption);
     if (!stepOption) continue;
 
-    progressiveOptions.push(stepOption);
+    const probedOption = await filterPjmOptionChoicesByProbe(
+      client,
+      config,
+      stepOption,
+      acceptedValues
+    );
+
+    progressiveOptions.push(probedOption);
 
     const selectedValue = selectedValues.find((value) =>
-      pjmOptionMatchesValue(stepOption, value)
+      pjmOptionMatchesValue(probedOption, value)
     );
     if (!selectedValue) continue;
 
-    const acceptedValue = sanitizePjmValueAgainstOption(selectedValue, stepOption);
+    const acceptedValue = sanitizePjmValueAgainstOption(selectedValue, probedOption);
     if (acceptedValue) {
       acceptedValues.push(acceptedValue);
     }

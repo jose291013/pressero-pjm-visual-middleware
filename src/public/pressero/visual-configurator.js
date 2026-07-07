@@ -259,6 +259,25 @@
     return nativeOption ? nativeOption.value : choice.value;
   }
 
+  function hasNativeChoice(field, choice) {
+    var aliases = choiceValues(choice);
+    return Array.prototype.some.call(field.options || [], function (option) {
+      return nativeOptionTokens(option).some(function (value) {
+        return aliases.indexOf(value) >= 0;
+      });
+    });
+  }
+
+  function visibleChoicesForNativeField(field, choices) {
+    if (!field || !field.options || !field.options.length) {
+      return choices;
+    }
+
+    return choices.filter(function (choice) {
+      return hasNativeChoice(field, choice);
+    });
+  }
+
   function syncSelection(section, field) {
     var value = String(field.value || "");
     section.querySelectorAll(".ppv-choice").forEach(function (button) {
@@ -302,8 +321,6 @@
     var field = findNativeField(option);
     if (!field) return null;
 
-    markNativeField(field);
-
     var section = document.createElement("section");
     section.className = "ppv-section";
     section.setAttribute("data-option-id", option.pjmId);
@@ -315,9 +332,16 @@
 
     var grid = document.createElement("div");
     grid.className = "ppv-grid";
-    option.choices.forEach(function (choice) {
+    visibleChoicesForNativeField(field, option.choices).forEach(function (choice) {
       grid.appendChild(renderChoice(choice, field, section));
     });
+
+    if (!grid.children.length) {
+      return null;
+    }
+
+    markNativeField(field);
+
     section.appendChild(grid);
     root.appendChild(section);
 

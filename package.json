@@ -61,6 +61,7 @@
     "test:sprint51": "node scripts/test-sprint-51-live-options-compatibility.mjs",
     "test:sprint52": "node scripts/test-sprint-52-filter-incompatible-options.mjs",
     "test:sprint53": "node scripts/test-sprint-53-progressive-pjm-options.mjs",
+    "test:sprint54": "node scripts/test-sprint-54-hide-incompatible-visual-choices.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

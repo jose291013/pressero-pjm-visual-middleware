@@ -218,3 +218,9 @@ The same filtering applies before `optionsandprice`, so a previously selected va
 The provider now follows the same progressive compatibility pattern as the `saas-orchestrator` wizard. It first calls PJM `options` with no selections to read the engine order, then walks each option with only the previously accepted values.
 
 Pressero options are built from these progressive responses, and `optionsandprice` receives the same accepted values. This avoids showing choices that PJM would later ignore because they are incompatible with earlier selections.
+
+## Sprint 54 Hide Incompatible Visual Choices
+
+The static public `visual-config` still exposes the complete mapped image library for the product, but the browser runtime now filters buttons against the current native Pressero select options before rendering them.
+
+The backend also probes each candidate choice with PJM `options` using the previously accepted values plus that candidate. Choices that PJM rejects or does not keep available are removed before Pressero sees them. This keeps image buttons aligned with the native Pressero select and avoids showing incompatible choices.
