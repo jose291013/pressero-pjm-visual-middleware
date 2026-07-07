@@ -212,3 +212,9 @@ This allows Pressero option refreshes to reflect PJM incompatibilites after each
 The Pressero provider now filters PJM live options and choices marked as unavailable before returning `PricingParameter[]` to Pressero. Flags such as `Suppress`, `Hidden`, `Disabled`, `Available=false`, `Enabled=false` and `Visible=false` remove the option or choice from the user-facing list.
 
 The same filtering applies before `optionsandprice`, so a previously selected value that PJM now marks as incompatible is not kept in the calculation payload.
+
+## Sprint 53 Progressive PJM Options
+
+The provider now follows the same progressive compatibility pattern as the `saas-orchestrator` wizard. It first calls PJM `options` with no selections to read the engine order, then walks each option with only the previously accepted values.
+
+Pressero options are built from these progressive responses, and `optionsandprice` receives the same accepted values. This avoids showing choices that PJM would later ignore because they are incompatible with earlier selections.

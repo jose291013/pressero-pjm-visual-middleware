@@ -508,6 +508,54 @@ function pjmOptionMatchesValue(
   );
 }
 
+function findPjmOptionInList(
+  options: PjmEngineOptionResponse[],
+  source: PjmEngineOptionResponse
+) {
+  const sourceId = readPjmOptionId(source);
+  const sourceLabel = readPjmOptionLabel(source);
+
+  return options.find((option) =>
+    comparableMatches(readPjmOptionId(option), sourceId) ||
+    comparableMatches(readPjmOptionLabel(option), sourceLabel)
+  ) ?? null;
+}
+
+function sanitizePjmValueAgainstOption(
+  value: PjmEngineOptionValue,
+  option: PjmEngineOptionResponse
+): PjmEngineOptionValue | null {
+  if (!pjmOptionMatchesValue(option, value)) return null;
+
+  const key = readPjmOptionId(option);
+  if (!key) return null;
+
+  const choices = readPjmOptionChoices(option);
+  if (!choices.length) {
+    const rawValue = value.Value;
+    if (rawValue === null || rawValue === undefined || String(rawValue).trim() === "") {
+      return null;
+    }
+
+    return {
+      Key: key,
+      Value: String(rawValue)
+    };
+  }
+
+  const selectedChoice = choices.find((choice) => {
+    return comparableMatches(value.Value, readPjmChoiceValue(choice)) ||
+      comparableMatches(value.Value, readPjmChoiceLabel(choice));
+  });
+
+  if (!selectedChoice) return null;
+
+  return {
+    Key: key,
+    Value: readPjmChoiceValue(selectedChoice)
+  };
+}
+
 function sanitizePjmEngineValuesAgainstOptions(
   values: PjmEngineOptionValue[],
   optionsResponse: PjmEngineOptionsResponse
@@ -523,34 +571,71 @@ function sanitizePjmEngineValuesAgainstOptions(
     );
     if (!liveOption) return [];
 
-    const key = readPjmOptionId(liveOption);
-    if (!key) return [];
+    const sanitized = sanitizePjmValueAgainstOption(value, liveOption);
+    return sanitized ? [sanitized] : [];
+  });
+}
 
-    const choices = readPjmOptionChoices(liveOption);
-    if (!choices.length) {
-      const rawValue = value.Value;
-      if (rawValue === null || rawValue === undefined || String(rawValue).trim() === "") {
-        return [];
-      }
+async function resolveProgressivePjmOptions(
+  config: Pick<PricingConfigRecord, "enginePriceGroupIntegrationId" | "misProductId">,
+  selectedValues: PjmEngineOptionValue[]
+) {
+  const client = createPjmClientFromEnv();
+  const baseOptions = readPjmOptionsArray(
+    await client.getEngineOptions(config.enginePriceGroupIntegrationId, [])
+  );
+  const acceptedValues: PjmEngineOptionValue[] = [];
+  const progressiveOptions: PjmEngineOptionResponse[] = [];
+  let requestCount = 1;
 
-      return [{
-        Key: key,
-        Value: String(rawValue)
-      }];
+  for (const baseOption of baseOptions) {
+    const stepOptions = acceptedValues.length
+      ? readPjmOptionsArray(
+          await client.getEngineOptions(
+            config.enginePriceGroupIntegrationId,
+            acceptedValues
+          )
+        )
+      : baseOptions;
+
+    if (acceptedValues.length) {
+      requestCount += 1;
     }
 
-    const selectedChoice = choices.find((choice) => {
-      return comparableMatches(value.Value, readPjmChoiceValue(choice)) ||
-        comparableMatches(value.Value, readPjmChoiceLabel(choice));
-    });
+    const stepOption = findPjmOptionInList(stepOptions, baseOption);
+    if (!stepOption) continue;
 
-    if (!selectedChoice) return [];
+    progressiveOptions.push(stepOption);
 
-    return [{
-      Key: key,
-      Value: readPjmChoiceValue(selectedChoice)
-    }];
-  });
+    const selectedValue = selectedValues.find((value) =>
+      pjmOptionMatchesValue(stepOption, value)
+    );
+    if (!selectedValue) continue;
+
+    const acceptedValue = sanitizePjmValueAgainstOption(selectedValue, stepOption);
+    if (acceptedValue) {
+      acceptedValues.push(acceptedValue);
+    }
+  }
+
+  console.info("[pressero-pricing] pjm-progressive-options", JSON.stringify({
+    productId: config.misProductId,
+    requestCount,
+    selectedValueCount: selectedValues.length,
+    acceptedValueCount: acceptedValues.length,
+    optionCount: progressiveOptions.length,
+    choiceCount: progressiveOptions.reduce(
+      (total, option) => total + readPjmOptionChoices(option).length,
+      0
+    ),
+    acceptedValues: summarizePjmValues(acceptedValues)
+  }));
+
+  return {
+    options: progressiveOptions,
+    values: acceptedValues,
+    requestCount
+  };
 }
 
 function findConfigOptionByPjmId(
@@ -745,27 +830,22 @@ async function calculatePjmLivePrice(
   config: PricingConfigRecord,
   body: PresseroPricingRequestBody
 ) {
-  const client = createPjmClientFromEnv();
   const initialValues = buildPjmEngineValues(config, body);
-  const refreshedOptions = await client.getEngineOptions(
-    config.enginePriceGroupIntegrationId,
-    initialValues
-  );
-  const sanitizedValues = sanitizePjmEngineValuesAgainstOptions(
-    initialValues,
-    refreshedOptions
-  );
+  const progressive = await resolveProgressivePjmOptions(config, initialValues);
+  const sanitizedValues = progressive.values;
 
   console.info("[pressero-pricing] pjm-live-flow", JSON.stringify({
     productId: config.misProductId,
-    mode: "options-then-optionsandprice",
+    mode: "progressive-options-then-optionsandprice",
     initialValueCount: initialValues.length,
-    refreshedOptionCount: readPjmOptionsArray(refreshedOptions).length,
+    refreshedOptionCount: progressive.options.length,
     sanitizedValueCount: sanitizedValues.length,
+    progressiveRequestCount: progressive.requestCount,
     initialValues: summarizePjmValues(initialValues),
     sanitizedValues: summarizePjmValues(sanitizedValues)
   }));
 
+  const client = createPjmClientFromEnv();
   const response = await client.getOptionsAndPrice(
     config.enginePriceGroupIntegrationId,
     sanitizedValues
@@ -898,15 +978,11 @@ export async function buildPresseroOptionsForProduct(
   }
 
   if ((config.pricingMode as PresseroPricingMode) !== "negotiated") {
-    const client = createPjmClientFromEnv();
     const initialValues = buildPjmEngineValues(config, body);
-    const refreshedOptions = await client.getEngineOptions(
-      config.enginePriceGroupIntegrationId,
-      initialValues
-    );
+    const progressive = await resolveProgressivePjmOptions(config, initialValues);
     const liveOptions = buildPresseroOptionsFromPjmResponse(
       config,
-      refreshedOptions
+      progressive.options
     );
 
     if (liveOptions.length) {
