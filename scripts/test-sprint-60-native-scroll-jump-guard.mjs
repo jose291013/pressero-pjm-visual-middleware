@@ -29,7 +29,7 @@ const visualScript = read("src/public/pressero/visual-configurator.js");
   "restoreDuringNativeSettle",
   "[0, 80, 180, 360, 700, 1100]",
   "stabilizeAfterVisualSelection",
-  "rememberScroll();\n        stabilizeNativePricingChange();",
+  "stabilizeNativePricingChange();",
   "body.ppv-active #calcParmInputs li:has(",
   "body.ppv-active #calcParmInputs .form-group:has(",
   "visibility:hidden!important;pointer-events:none!important"

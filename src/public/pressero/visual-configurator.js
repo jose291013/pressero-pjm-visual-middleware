@@ -14,6 +14,9 @@
     observer: null,
     isRendering: false,
     shieldTimer: null,
+    scrollHoldTimer: null,
+    scrollHoldUntil: 0,
+    isRestoringScroll: false,
     rememberedNativeSelectors: [],
     noBindingRenderCount: 0,
     lastScroll: {
@@ -240,7 +243,34 @@
   }
 
   function restoreScroll(left, top) {
+    state.isRestoringScroll = true;
     window.scrollTo(left, top);
+    window.setTimeout(function () {
+      state.isRestoringScroll = false;
+    }, 0);
+  }
+
+  function hasActiveScrollHold() {
+    return Date.now() < state.scrollHoldUntil;
+  }
+
+  function startScrollHold(durationMs) {
+    state.scrollHoldUntil = Math.max(state.scrollHoldUntil, Date.now() + durationMs);
+    window.clearInterval(state.scrollHoldTimer);
+    restoreLastScroll();
+    state.scrollHoldTimer = window.setInterval(function () {
+      if (!hasActiveScrollHold()) {
+        window.clearInterval(state.scrollHoldTimer);
+        state.scrollHoldTimer = null;
+        return;
+      }
+      restoreLastScroll();
+    }, 40);
+  }
+
+  function preserveNativeFieldScroll() {
+    rememberScroll();
+    startScrollHold(2600);
   }
 
   function isNativePricingField(target) {
@@ -252,6 +282,7 @@
 
   function stabilizeNativePricingChange() {
     startTemporaryShield();
+    startScrollHold(2600);
     restoreDuringNativeSettle();
   }
 
@@ -268,6 +299,7 @@
 
   function stabilizeAfterVisualSelection() {
     startTemporaryShield();
+    startScrollHold(2600);
     restoreDuringNativeSettle();
     window.setTimeout(function () {
       restoreLastScroll();
@@ -416,6 +448,7 @@
 
   function setNativeValue(field, value) {
     rememberScroll();
+    startScrollHold(2600);
 
     field.value = String(value);
     Array.prototype.forEach.call(field.options || [], function (option) {
@@ -573,16 +606,17 @@
     hardShield();
     applyRememberedNativeHiding();
     var root = ensureRoot();
-    root.innerHTML = "";
+    var previousHadVisualSections = Boolean(root.querySelector(".ppv-section"));
+    var nextRoot = document.createElement("div");
     state.bindings = [];
 
     var title = document.createElement("h2");
     title.className = "ppv-title";
     title.textContent = config.name || "Configuration";
-    root.appendChild(title);
+    nextRoot.appendChild(title);
 
     (config.options || []).forEach(function (option) {
-      renderOption(option, root);
+      renderOption(option, nextRoot);
     });
 
     if ((config.options || []).some(isQuantityOption) || hasPjmQuantityField()) {
@@ -592,7 +626,7 @@
     if (!state.bindings.length) {
       state.noBindingRenderCount += 1;
       if ((config.options || []).length && state.noBindingRenderCount < 25) {
-        root.hidden = true;
+        root.hidden = previousHadVisualSections ? false : true;
         window.setTimeout(function () {
           state.isRendering = false;
           scheduleRender();
@@ -604,12 +638,13 @@
         var warning = document.createElement("p");
         warning.className = "ppv-warning";
         warning.textContent = "Aucune option visuelle ne correspond aux champs Pressero de cette page.";
-        root.appendChild(warning);
+        nextRoot.appendChild(warning);
       }
     } else {
       state.noBindingRenderCount = 0;
     }
 
+    root.replaceChildren.apply(root, Array.prototype.slice.call(nextRoot.childNodes));
     root.hidden = false;
     window.setTimeout(function () {
       state.isRendering = false;
@@ -673,21 +708,28 @@
   onReady(function () {
     document.addEventListener("mousedown", function (event) {
       if (isNativePricingField(event.target)) {
-        rememberScroll();
+        preserveNativeFieldScroll();
       }
     }, true);
 
     document.addEventListener("focusin", function (event) {
       if (isNativePricingField(event.target)) {
-        rememberScroll();
+        preserveNativeFieldScroll();
       }
     }, true);
 
     document.addEventListener("change", function (event) {
       if (isNativePricingField(event.target)) {
-        rememberScroll();
+        if (!hasActiveScrollHold()) {
+          rememberScroll();
+        }
         stabilizeNativePricingChange();
       }
+    }, true);
+
+    window.addEventListener("scroll", function () {
+      if (!hasActiveScrollHold() || state.isRestoringScroll) return;
+      window.requestAnimationFrame(restoreLastScroll);
     }, true);
 
     load().catch(function (_error) {

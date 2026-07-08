@@ -260,3 +260,9 @@ The visual runtime also delays the no-match warning while Pressero is still buil
 The public visual runtime now hides transformed native Pressero option rows with `display:none` instead of moving their fields offscreen, preventing a short native dropdown flash during recalculation.
 
 It also disables `overflow-anchor` on the visual and native pricing containers and restores the current scroll position several times during Pressero's recalculation window. This keeps visible native fields such as quantity stable when they trigger pricing updates.
+
+## Sprint 61 Native Scroll Hold And Stale Render Guard
+
+The public visual runtime now starts a temporary scroll hold as soon as a native Pressero/PJM pricing field receives mouse or focus interaction. During that hold, the native `change` handler does not overwrite the saved scroll position after Pressero has already moved the page.
+
+Late scroll events are restored immediately, and transient Pressero rerenders no longer clear the visual configurator while no matching native fields are available. The runtime keeps the previous visual UI until the rebuilt native fields can be matched again.
