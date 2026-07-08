@@ -242,3 +242,9 @@ The middleware also keeps a singleton PJM client for env-based usage so the PJM 
 The visual runtime now places its root outside the native pricing loading container when possible, so Pressero refresh overlays do not gray the image configurator. During native recalculation it also suppresses known Pressero/Kendo loading masks and restores scroll after the real select dispatches its `change` event.
 
 The V22.1 contract remains intact: visual buttons still update real Pressero/PJM fields, dispatch one native `change`, and leave price calculation to Pressero/PJM.
+
+## Sprint 58 PJM Auth Retry And Stable Native Fields
+
+The PJM client now retries authenticated requests once after a `401` by forcing a fresh token with `authenticate(true)`. This protects Render's long-lived PJM singleton from stale or rejected tokens without requiring admin changes.
+
+The public visual runtime now stores remembered native field selectors and keeps a dynamic CSS sheet for those fields. When Pressero rebuilds the pricing DOM, the native selects are hidden immediately and the visual rerender delay is reduced, preventing the dropdown flash and reducing unwanted scroll jumps.

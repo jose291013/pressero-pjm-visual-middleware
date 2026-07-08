@@ -65,6 +65,7 @@
     "test:sprint55": "node scripts/test-sprint-55-hide-neutral-only-and-parallel-probes.mjs",
     "test:sprint56": "node scripts/test-sprint-56-fast-live-pricing.mjs",
     "test:sprint57": "node scripts/test-sprint-57-neutralize-pressero-native-loading.mjs",
+    "test:sprint58": "node scripts/test-sprint-58-pjm-auth-retry-and-stable-native-fields.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

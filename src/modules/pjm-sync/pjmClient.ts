@@ -150,10 +150,9 @@ export class PjmClient {
   }
 
   async listProductEngines(): Promise<PjmProductEngineListResponse> {
-    return this.postJson<PjmProductEngineListResponse>(
+    return this.postJsonWithAuth<PjmProductEngineListResponse>(
       "/public/productEngines/list",
-      {},
-      await this.authenticate()
+      {}
     );
   }
 
@@ -164,14 +163,13 @@ export class PjmClient {
       Search?: string;
     } = {}
   ): Promise<PjmOrganizationListResponse> {
-    return this.postJson<PjmOrganizationListResponse>(
+    return this.postJsonWithAuth<PjmOrganizationListResponse>(
       "/public/organizations/list",
       {
         Take: payload.Take ?? 100,
         Skip: payload.Skip ?? 0,
         Search: payload.Search ?? ""
-      },
-      await this.authenticate()
+      }
     );
   }
 
@@ -196,18 +194,16 @@ export class PjmClient {
   async createJobs(
     payload: PjmCreateJobsRequest
   ): Promise<PjmCreateJobsResponse> {
-    return this.postJson<PjmCreateJobsResponse>(
+    return this.postJsonWithAuth<PjmCreateJobsResponse>(
       "/public/jobs",
-      payload,
-      await this.authenticate()
+      payload
     );
   }
 
   async callEngine<TResponse>(payload: PjmEngineRequest): Promise<TResponse> {
-    return this.postJson<TResponse>(
+    return this.postJsonWithAuth<TResponse>(
       "/public/engine",
-      payload,
-      await this.authenticate()
+      payload
     );
   }
 
@@ -257,6 +253,29 @@ export class PjmClient {
       return JSON.parse(text) as TResponse;
     } catch {
       throw new Error(`PJM response is not valid JSON for ${url}.`);
+    }
+  }
+
+  private async postJsonWithAuth<TResponse>(
+    path: string,
+    payload: unknown
+  ): Promise<TResponse> {
+    try {
+      return await this.postJson<TResponse>(
+        path,
+        payload,
+        await this.authenticate()
+      );
+    } catch (error) {
+      if (error instanceof PjmHttpError && error.status === 401) {
+        return this.postJson<TResponse>(
+          path,
+          payload,
+          await this.authenticate(true)
+        );
+      }
+
+      throw error;
     }
   }
 }

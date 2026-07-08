@@ -13,7 +13,12 @@
     renderTimer: null,
     observer: null,
     isRendering: false,
-    shieldTimer: null
+    shieldTimer: null,
+    rememberedNativeSelectors: [],
+    lastScroll: {
+      left: 0,
+      top: 0
+    }
   };
 
   function normalize(value) {
@@ -95,6 +100,13 @@
       document.body.firstElementChild;
   }
 
+  function cssEscape(value) {
+    if (window.CSS && typeof window.CSS.escape === "function") {
+      return window.CSS.escape(value);
+    }
+    return String(value).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+  }
+
   function findPricingContainer(anchor) {
     if (!anchor || !anchor.closest) return null;
     return anchor.closest("#pricingArea,#pricingEngineArea,.pricingArea,.pricingEngineArea,.calculatorInputs,.calculatorResults");
@@ -154,6 +166,64 @@
     });
   }
 
+  function rememberScroll() {
+    state.lastScroll = {
+      left: window.pageXOffset || document.documentElement.scrollLeft || 0,
+      top: window.pageYOffset || document.documentElement.scrollTop || 0
+    };
+  }
+
+  function restoreLastScroll() {
+    restoreScroll(state.lastScroll.left, state.lastScroll.top);
+  }
+
+  function rememberNativeField(field) {
+    if (!field) return;
+
+    var selectors = [];
+    if (field.id) {
+      selectors.push("#" + cssEscape(field.id));
+    }
+    if (field.name) {
+      selectors.push("[name='" + String(field.name).replace(/'/g, "\\'") + "']");
+    }
+
+    selectors.forEach(function (selector) {
+      if (state.rememberedNativeSelectors.indexOf(selector) < 0) {
+        state.rememberedNativeSelectors.push(selector);
+      }
+    });
+
+    updateRememberedNativeStyle();
+  }
+
+  function updateRememberedNativeStyle() {
+    var style = document.getElementById("pressero-pjm-visual-native-field-rules");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "pressero-pjm-visual-native-field-rules";
+      document.head.appendChild(style);
+    }
+
+    var rules = state.rememberedNativeSelectors.map(function (selector) {
+      return [
+        "body.ppv-active #calcParmInputs li:has(" + selector + "){display:none!important}",
+        "body.ppv-active #calcParmInputs .form-group:has(" + selector + "){display:none!important}",
+        "body.ppv-active " + selector + "{position:absolute!important;left:-99999px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}"
+      ].join("");
+    });
+
+    style.textContent = rules.join("");
+  }
+
+  function applyRememberedNativeHiding() {
+    state.rememberedNativeSelectors.forEach(function (selector) {
+      document.querySelectorAll(selector).forEach(function (field) {
+        markNativeField(field);
+      });
+    });
+  }
+
   function startTemporaryShield() {
     hardShield();
     window.clearInterval(state.shieldTimer);
@@ -169,6 +239,33 @@
 
   function restoreScroll(left, top) {
     window.scrollTo(left, top);
+  }
+
+  function isNativePricingField(target) {
+    if (!target || !target.closest || !target.matches) return false;
+    if (target.closest("#" + rootId)) return false;
+    if (!target.matches("input,select,textarea")) return false;
+    return Boolean(target.closest("#calcParmInputs,#pricingArea,#pricingEngineArea,.pricingArea,.pricingEngineArea"));
+  }
+
+  function stabilizeNativePricingChange() {
+    startTemporaryShield();
+    restoreLastScroll();
+    window.setTimeout(function () {
+      restoreLastScroll();
+      hardShield();
+      applyRememberedNativeHiding();
+    }, 0);
+    window.setTimeout(function () {
+      restoreLastScroll();
+      hardShield();
+      applyRememberedNativeHiding();
+    }, 180);
+    window.setTimeout(function () {
+      restoreLastScroll();
+      hardShield();
+      applyRememberedNativeHiding();
+    }, 600);
   }
 
   function optionValues(select) {
@@ -257,6 +354,7 @@
   }
 
   function markNativeField(field) {
+    rememberNativeField(field);
     var group = nativeFieldGroup(field);
     if (group) {
       group.classList.add("ppv-native-hidden");
@@ -304,8 +402,7 @@
   }
 
   function setNativeValue(field, value) {
-    var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft || 0;
-    var scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+    rememberScroll();
 
     field.value = String(value);
     Array.prototype.forEach.call(field.options || [], function (option) {
@@ -314,17 +411,17 @@
 
     startTemporaryShield();
     field.dispatchEvent(new Event("change", { bubbles: true }));
-    restoreScroll(scrollLeft, scrollTop);
+    restoreLastScroll();
     window.setTimeout(function () {
-      restoreScroll(scrollLeft, scrollTop);
+      restoreLastScroll();
       hardShield();
     }, 0);
     window.setTimeout(function () {
-      restoreScroll(scrollLeft, scrollTop);
+      restoreLastScroll();
       hardShield();
     }, 120);
     window.setTimeout(function () {
-      restoreScroll(scrollLeft, scrollTop);
+      restoreLastScroll();
       hardShield();
     }, 450);
   }
@@ -473,6 +570,7 @@
   function renderConfig(config) {
     state.isRendering = true;
     hardShield();
+    applyRememberedNativeHiding();
     var root = ensureRoot();
     root.innerHTML = "";
     state.bindings = [];
@@ -506,10 +604,12 @@
   function scheduleRender() {
     if (!state.config || state.isRendering) return;
 
+    hardShield();
+    applyRememberedNativeHiding();
     window.clearTimeout(state.renderTimer);
     state.renderTimer = window.setTimeout(function () {
       renderConfig(state.config);
-    }, 250);
+    }, 40);
   }
 
   function observePresseroRerenders() {
@@ -556,6 +656,24 @@
   }
 
   onReady(function () {
+    document.addEventListener("mousedown", function (event) {
+      if (isNativePricingField(event.target)) {
+        rememberScroll();
+      }
+    }, true);
+
+    document.addEventListener("focusin", function (event) {
+      if (isNativePricingField(event.target)) {
+        rememberScroll();
+      }
+    }, true);
+
+    document.addEventListener("change", function (event) {
+      if (isNativePricingField(event.target)) {
+        stabilizeNativePricingChange();
+      }
+    }, true);
+
     load().catch(function (_error) {
       ensureRoot().hidden = true;
     });
