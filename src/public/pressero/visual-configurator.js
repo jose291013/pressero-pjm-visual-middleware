@@ -62,7 +62,7 @@
     var style = document.createElement("style");
     style.id = "pressero-pjm-visual-styles";
     style.textContent = [
-      "#pressero-pjm-visual-configurator{display:block;background:#fff;border:1px solid #d7deea;border-radius:8px;padding:16px;margin:0 0 18px 0;box-sizing:border-box}",
+      "#pressero-pjm-visual-configurator{display:block;background:#fff;border:1px solid #d7deea;border-radius:8px;padding:16px;margin:0 0 18px 0;box-sizing:border-box;overflow-anchor:none!important}",
       "#pressero-pjm-visual-configurator[hidden]{display:none!important}",
       ".ppv-title{margin:0 0 14px 0;font-size:20px;font-weight:700;color:#111827}",
       ".ppv-section{margin:0 0 18px 0}",
@@ -74,10 +74,11 @@
       ".ppv-choice.is-selected{border-color:#16833a;box-shadow:0 0 0 3px rgba(22,131,58,.14)}",
       ".ppv-choice img{display:block;width:76px;height:76px;object-fit:contain;pointer-events:none}",
       ".ppv-choice span{font-size:13px;line-height:1.2;font-weight:600}",
-      ".ppv-native-hidden{position:absolute!important;left:-99999px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}",
+      ".ppv-native-hidden{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important}",
       ".ppv-generic-quantity-hidden{display:none!important}",
       ".ppv-warning{font-size:13px;color:#b45309;margin:6px 0 0 0}",
       "html.ppv-active.lock-scroll,body.ppv-active.lock-scroll{overflow:auto!important;position:static!important}",
+      "body.ppv-active #pricingArea,body.ppv-active #pricingEngineArea,body.ppv-active #calcParmInputs{overflow-anchor:none!important}",
       "body.ppv-active.pc-busy{cursor:auto!important}",
       "body.ppv-active #uiLock,body.ppv-active #pcGlobalNavOverlay,body.ppv-active #myCustomLoaderLocal,body.ppv-active .k-loading-mask,body.ppv-active .k-loading-image,body.ppv-active .k-loading-color{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important}",
       "body.ppv-active #pressero-pjm-visual-configurator .k-loading-mask,body.ppv-active #pressero-pjm-visual-configurator .k-loading-image,body.ppv-active #pressero-pjm-visual-configurator .k-loading-color{display:none!important}"
@@ -210,7 +211,7 @@
       return [
         "body.ppv-active #calcParmInputs li:has(" + selector + "){display:none!important}",
         "body.ppv-active #calcParmInputs .form-group:has(" + selector + "){display:none!important}",
-        "body.ppv-active " + selector + "{position:absolute!important;left:-99999px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}"
+        "body.ppv-active " + selector + "{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important}"
       ].join("");
     });
 
@@ -251,22 +252,33 @@
 
   function stabilizeNativePricingChange() {
     startTemporaryShield();
+    restoreDuringNativeSettle();
+  }
+
+  function restoreDuringNativeSettle() {
+    [0, 80, 180, 360, 700, 1100].forEach(function (delay) {
+      window.setTimeout(function () {
+        restoreLastScroll();
+        hardShield();
+        applyRememberedNativeHiding();
+      }, delay);
+    });
     restoreLastScroll();
+  }
+
+  function stabilizeAfterVisualSelection() {
+    startTemporaryShield();
+    restoreDuringNativeSettle();
     window.setTimeout(function () {
       restoreLastScroll();
       hardShield();
       applyRememberedNativeHiding();
-    }, 0);
+    }, 1400);
     window.setTimeout(function () {
       restoreLastScroll();
       hardShield();
       applyRememberedNativeHiding();
-    }, 180);
-    window.setTimeout(function () {
-      restoreLastScroll();
-      hardShield();
-      applyRememberedNativeHiding();
-    }, 600);
+    }, 1900);
   }
 
   function optionValues(select) {
@@ -412,19 +424,7 @@
 
     startTemporaryShield();
     field.dispatchEvent(new Event("change", { bubbles: true }));
-    restoreLastScroll();
-    window.setTimeout(function () {
-      restoreLastScroll();
-      hardShield();
-    }, 0);
-    window.setTimeout(function () {
-      restoreLastScroll();
-      hardShield();
-    }, 120);
-    window.setTimeout(function () {
-      restoreLastScroll();
-      hardShield();
-    }, 450);
+    stabilizeAfterVisualSelection();
   }
 
   function resolveNativeValue(field, choice) {
@@ -685,6 +685,7 @@
 
     document.addEventListener("change", function (event) {
       if (isNativePricingField(event.target)) {
+        rememberScroll();
         stabilizeNativePricingChange();
       }
     }, true);

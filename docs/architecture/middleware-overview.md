@@ -254,3 +254,9 @@ The public visual runtime now stores remembered native field selectors and keeps
 The Pressero pricing provider now returns choice-bearing parameters before free-input parameters, so a PJM quantity field with `Options: []` cannot lead the response and prevent later visual choices from rendering in Pressero.
 
 The visual runtime also delays the no-match warning while Pressero is still building native fields. It retries short render cycles before showing `Aucune option visuelle...`, avoiding a false warning during option initialization.
+
+## Sprint 60 Native Scroll Jump Guard
+
+The public visual runtime now hides transformed native Pressero option rows with `display:none` instead of moving their fields offscreen, preventing a short native dropdown flash during recalculation.
+
+It also disables `overflow-anchor` on the visual and native pricing containers and restores the current scroll position several times during Pressero's recalculation window. This keeps visible native fields such as quantity stable when they trigger pricing updates.
