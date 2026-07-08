@@ -236,3 +236,9 @@ PJM candidate probes are also executed in parallel per option, and probing is sk
 Live PJM pricing now attempts one `optionsandprice` call with the `{ Key, Value }` pairs submitted by Pressero before using the slower progressive fallback. This keeps the normal price path short while preserving the compatibility safety path for rejected configurations.
 
 The middleware also keeps a singleton PJM client for env-based usage so the PJM auth token survives across requests. A short TTL cache deduplicates repeated `options` and `optionsandprice` calls triggered by Pressero refreshes.
+
+## Sprint 57 Pressero Native Loading Neutralization
+
+The visual runtime now places its root outside the native pricing loading container when possible, so Pressero refresh overlays do not gray the image configurator. During native recalculation it also suppresses known Pressero/Kendo loading masks and restores scroll after the real select dispatches its `change` event.
+
+The V22.1 contract remains intact: visual buttons still update real Pressero/PJM fields, dispatch one native `change`, and leave price calculation to Pressero/PJM.

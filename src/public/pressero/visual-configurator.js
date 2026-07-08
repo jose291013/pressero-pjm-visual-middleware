@@ -12,7 +12,8 @@
     bindings: [],
     renderTimer: null,
     observer: null,
-    isRendering: false
+    isRendering: false,
+    shieldTimer: null
   };
 
   function normalize(value) {
@@ -69,7 +70,11 @@
       ".ppv-choice span{font-size:13px;line-height:1.2;font-weight:600}",
       ".ppv-native-hidden{position:absolute!important;left:-99999px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}",
       ".ppv-generic-quantity-hidden{display:none!important}",
-      ".ppv-warning{font-size:13px;color:#b45309;margin:6px 0 0 0}"
+      ".ppv-warning{font-size:13px;color:#b45309;margin:6px 0 0 0}",
+      "html.ppv-active.lock-scroll,body.ppv-active.lock-scroll{overflow:auto!important;position:static!important}",
+      "body.ppv-active.pc-busy{cursor:auto!important}",
+      "body.ppv-active #uiLock,body.ppv-active #pcGlobalNavOverlay,body.ppv-active #myCustomLoaderLocal,body.ppv-active .k-loading-mask,body.ppv-active .k-loading-image,body.ppv-active .k-loading-color{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important}",
+      "body.ppv-active #pressero-pjm-visual-configurator .k-loading-mask,body.ppv-active #pressero-pjm-visual-configurator .k-loading-image,body.ppv-active #pressero-pjm-visual-configurator .k-loading-color{display:none!important}"
     ].join("");
     document.head.appendChild(style);
   }
@@ -90,22 +95,80 @@
       document.body.firstElementChild;
   }
 
+  function findPricingContainer(anchor) {
+    if (!anchor || !anchor.closest) return null;
+    return anchor.closest("#pricingArea,#pricingEngineArea,.pricingArea,.pricingEngineArea,.calculatorInputs,.calculatorResults");
+  }
+
+  function visualInsertTarget(anchor) {
+    var pricingContainer = findPricingContainer(anchor);
+    if (pricingContainer && pricingContainer.parentNode) {
+      return pricingContainer;
+    }
+    return anchor;
+  }
+
+  function placeRoot(root) {
+    var anchor = findInsertAnchor();
+    var target = visualInsertTarget(anchor);
+    if (target && target.parentNode && root.nextSibling !== target) {
+      target.parentNode.insertBefore(root, target);
+    } else if (!root.parentNode) {
+      document.body.prepend(root);
+    }
+  }
+
   function ensureRoot() {
     var root = document.getElementById(rootId);
-    if (root) return root;
+    if (root) {
+      placeRoot(root);
+      return root;
+    }
 
     root = document.createElement("div");
     root.id = rootId;
     root.hidden = true;
+    root.setAttribute("data-no-ui-lock", "1");
 
-    var anchor = findInsertAnchor();
-    if (anchor && anchor.parentNode) {
-      anchor.parentNode.insertBefore(root, anchor);
-    } else {
-      document.body.prepend(root);
-    }
+    placeRoot(root);
 
     return root;
+  }
+
+  function hardShield() {
+    document.documentElement.classList.add("ppv-active");
+    document.body.classList.add("ppv-active");
+    document.documentElement.classList.remove("lock-scroll");
+    document.body.classList.remove("lock-scroll");
+    document.body.classList.remove("pc-busy");
+
+    ["uiLock", "pcGlobalNavOverlay", "myCustomLoaderLocal"].forEach(function (id) {
+      var element = document.getElementById(id);
+      if (!element) return;
+      element.classList.remove("active");
+      element.setAttribute("aria-hidden", "true");
+      element.style.setProperty("display", "none", "important");
+      element.style.setProperty("opacity", "0", "important");
+      element.style.setProperty("visibility", "hidden", "important");
+      element.style.setProperty("pointer-events", "none", "important");
+    });
+  }
+
+  function startTemporaryShield() {
+    hardShield();
+    window.clearInterval(state.shieldTimer);
+    var startedAt = Date.now();
+    state.shieldTimer = window.setInterval(function () {
+      hardShield();
+      if (Date.now() - startedAt > 2200) {
+        window.clearInterval(state.shieldTimer);
+        state.shieldTimer = null;
+      }
+    }, 80);
+  }
+
+  function restoreScroll(left, top) {
+    window.scrollTo(left, top);
   }
 
   function optionValues(select) {
@@ -241,11 +304,29 @@
   }
 
   function setNativeValue(field, value) {
+    var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft || 0;
+    var scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+
     field.value = String(value);
     Array.prototype.forEach.call(field.options || [], function (option) {
       option.selected = String(option.value) === String(value);
     });
+
+    startTemporaryShield();
     field.dispatchEvent(new Event("change", { bubbles: true }));
+    restoreScroll(scrollLeft, scrollTop);
+    window.setTimeout(function () {
+      restoreScroll(scrollLeft, scrollTop);
+      hardShield();
+    }, 0);
+    window.setTimeout(function () {
+      restoreScroll(scrollLeft, scrollTop);
+      hardShield();
+    }, 120);
+    window.setTimeout(function () {
+      restoreScroll(scrollLeft, scrollTop);
+      hardShield();
+    }, 450);
   }
 
   function resolveNativeValue(field, choice) {
@@ -391,6 +472,7 @@
 
   function renderConfig(config) {
     state.isRendering = true;
+    hardShield();
     var root = ensureRoot();
     root.innerHTML = "";
     state.bindings = [];
@@ -455,6 +537,7 @@
 
   async function load() {
     injectStyles();
+    hardShield();
     var misProductId = readMisProductId();
     if (!misProductId) return;
 
