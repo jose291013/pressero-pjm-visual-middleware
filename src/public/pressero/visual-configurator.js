@@ -14,9 +14,6 @@
     observer: null,
     isRendering: false,
     shieldTimer: null,
-    scrollHoldTimer: null,
-    scrollHoldUntil: 0,
-    isRestoringScroll: false,
     rememberedNativeSelectors: [],
     noBindingRenderCount: 0,
     lastScroll: {
@@ -214,7 +211,7 @@
       return [
         "body.ppv-active #calcParmInputs li:has(" + selector + "){display:none!important}",
         "body.ppv-active #calcParmInputs .form-group:has(" + selector + "){display:none!important}",
-        "body.ppv-active " + selector + "{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important}"
+        "body.ppv-active " + selector + "{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;display:block!important;opacity:0!important;pointer-events:none!important}"
       ].join("");
     });
 
@@ -243,34 +240,7 @@
   }
 
   function restoreScroll(left, top) {
-    state.isRestoringScroll = true;
     window.scrollTo(left, top);
-    window.setTimeout(function () {
-      state.isRestoringScroll = false;
-    }, 0);
-  }
-
-  function hasActiveScrollHold() {
-    return Date.now() < state.scrollHoldUntil;
-  }
-
-  function startScrollHold(durationMs) {
-    state.scrollHoldUntil = Math.max(state.scrollHoldUntil, Date.now() + durationMs);
-    window.clearInterval(state.scrollHoldTimer);
-    restoreLastScroll();
-    state.scrollHoldTimer = window.setInterval(function () {
-      if (!hasActiveScrollHold()) {
-        window.clearInterval(state.scrollHoldTimer);
-        state.scrollHoldTimer = null;
-        return;
-      }
-      restoreLastScroll();
-    }, 40);
-  }
-
-  function preserveNativeFieldScroll() {
-    rememberScroll();
-    startScrollHold(2600);
   }
 
   function isNativePricingField(target) {
@@ -282,8 +252,16 @@
 
   function stabilizeNativePricingChange() {
     startTemporaryShield();
-    startScrollHold(2600);
-    restoreDuringNativeSettle();
+    refreshNativeHidingDuringSettle();
+  }
+
+  function refreshNativeHidingDuringSettle() {
+    [0, 80, 180, 360, 700].forEach(function (delay) {
+      window.setTimeout(function () {
+        hardShield();
+        applyRememberedNativeHiding();
+      }, delay);
+    });
   }
 
   function restoreDuringNativeSettle() {
@@ -299,7 +277,6 @@
 
   function stabilizeAfterVisualSelection() {
     startTemporaryShield();
-    startScrollHold(2600);
     restoreDuringNativeSettle();
     window.setTimeout(function () {
       restoreLastScroll();
@@ -448,7 +425,6 @@
 
   function setNativeValue(field, value) {
     rememberScroll();
-    startScrollHold(2600);
 
     field.value = String(value);
     Array.prototype.forEach.call(field.options || [], function (option) {
@@ -659,7 +635,7 @@
     window.clearTimeout(state.renderTimer);
     state.renderTimer = window.setTimeout(function () {
       renderConfig(state.config);
-    }, 40);
+    }, 160);
   }
 
   function observePresseroRerenders() {
@@ -679,7 +655,12 @@
         scheduleRender();
       }
     });
-    state.observer.observe(document.body, {
+    var host = document.getElementById("calcParmInputs") ||
+      document.getElementById("pricingArea") ||
+      document.getElementById("pricingEngineArea") ||
+      document.body;
+
+    state.observer.observe(host, {
       childList: true,
       subtree: true
     });
@@ -708,28 +689,20 @@
   onReady(function () {
     document.addEventListener("mousedown", function (event) {
       if (isNativePricingField(event.target)) {
-        preserveNativeFieldScroll();
+        rememberScroll();
       }
     }, true);
 
     document.addEventListener("focusin", function (event) {
       if (isNativePricingField(event.target)) {
-        preserveNativeFieldScroll();
+        rememberScroll();
       }
     }, true);
 
     document.addEventListener("change", function (event) {
       if (isNativePricingField(event.target)) {
-        if (!hasActiveScrollHold()) {
-          rememberScroll();
-        }
         stabilizeNativePricingChange();
       }
-    }, true);
-
-    window.addEventListener("scroll", function () {
-      if (!hasActiveScrollHold() || state.isRestoringScroll) return;
-      window.requestAnimationFrame(restoreLastScroll);
     }, true);
 
     load().catch(function (_error) {

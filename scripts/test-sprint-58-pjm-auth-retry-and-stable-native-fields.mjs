@@ -42,7 +42,7 @@ const visualScript = read("src/public/pressero/visual-configurator.js");
   "document.addEventListener(\"change\"",
   "document.addEventListener(\"focusin\"",
   "document.addEventListener(\"mousedown\"",
-  "}, 40);"
+  "}, 160);"
 ].forEach((needle) => assertIncludes(visualScript, needle, "visual-configurator.js"));
 
 const sprintDoc = read("docs/sprints/sprint-58-pjm-auth-retry-and-stable-native-fields.md");

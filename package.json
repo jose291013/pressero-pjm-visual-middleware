@@ -69,6 +69,7 @@
     "test:sprint59": "node scripts/test-sprint-59-stable-option-render-after-quantity-reorder.mjs",
     "test:sprint60": "node scripts/test-sprint-60-native-scroll-jump-guard.mjs",
     "test:sprint61": "node scripts/test-sprint-61-native-scroll-hold-and-stale-render-guard.mjs",
+    "test:sprint62": "node scripts/test-sprint-62-soft-native-refresh-after-user-script-feedback.mjs",
     "dev:check": "node scripts/dev-check.mjs",
     "seed:pjm-mock": "node scripts/seed-pjm-mock.mjs",
     "sync:pjm": "tsx src/modules/pjm-sync/pjmSync.runner.ts",

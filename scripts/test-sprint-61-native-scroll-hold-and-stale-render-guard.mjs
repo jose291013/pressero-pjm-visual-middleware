@@ -24,23 +24,25 @@ assert(
 
 const visualScript = read("src/public/pressero/visual-configurator.js");
 [
-  "scrollHoldUntil",
-  "hasActiveScrollHold",
-  "startScrollHold(2600)",
-  "preserveNativeFieldScroll",
-  "if (!hasActiveScrollHold())",
-  "window.addEventListener(\"scroll\"",
-  "window.requestAnimationFrame(restoreLastScroll)",
   "previousHadVisualSections",
   "nextRoot = document.createElement(\"div\")",
-  "root.replaceChildren.apply"
+  "root.replaceChildren.apply",
+  "root.hidden = previousHadVisualSections ? false : true"
 ].forEach((needle) => assertIncludes(visualScript, needle, "visual-configurator.js"));
+
+[
+  "scrollHoldUntil",
+  "startScrollHold(2600)",
+  "window.requestAnimationFrame(restoreLastScroll)"
+].forEach((needle) =>
+  assert(!visualScript.includes(needle), `visual-configurator.js should not include aggressive scroll hold: ${needle}`)
+);
 
 const sprintDoc = read("docs/sprints/sprint-61-native-scroll-hold-and-stale-render-guard.md");
 [
   "Sprint 61",
   "scroll",
-  "mauvaise position",
+  "supprime",
   "rerender",
   "ancienne interface visuelle"
 ].forEach((needle) => assertIncludes(sprintDoc, needle, "sprint doc"));
@@ -48,7 +50,7 @@ const sprintDoc = read("docs/sprints/sprint-61-native-scroll-hold-and-stale-rend
 const overview = read("docs/architecture/middleware-overview.md");
 [
   "Sprint 61 Native Scroll Hold And Stale Render Guard",
-  "does not overwrite the saved scroll position",
+  "superseded the aggressive scroll lock",
   "keeps the previous visual UI"
 ].forEach((needle) => assertIncludes(overview, needle, "architecture overview"));
 

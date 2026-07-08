@@ -263,6 +263,12 @@ It also disables `overflow-anchor` on the visual and native pricing containers a
 
 ## Sprint 61 Native Scroll Hold And Stale Render Guard
 
-The public visual runtime now starts a temporary scroll hold as soon as a native Pressero/PJM pricing field receives mouse or focus interaction. During that hold, the native `change` handler does not overwrite the saved scroll position after Pressero has already moved the page.
+Sprint 62 superseded the aggressive scroll lock attempted in this sprint.
 
-Late scroll events are restored immediately, and transient Pressero rerenders no longer clear the visual configurator while no matching native fields are available. The runtime keeps the previous visual UI until the rebuilt native fields can be matched again.
+The useful part remains: transient Pressero rerenders no longer clear the visual configurator while no matching native fields are available. The runtime keeps the previous visual UI until the rebuilt native fields can be matched again.
+
+## Sprint 62 Soft Native Refresh After User Script Feedback
+
+After comparing against a user-provided Pressero script that behaved better, the public runtime removes the aggressive scroll hold and avoids fighting the browser's scroll position.
+
+The fallback native select hiding now uses the offscreen native select pattern, while full native option rows still use `display:none` through `:has`. The visual rerender debounce is softened to 160 ms and the observer watches the native pricing area first instead of the whole document body.

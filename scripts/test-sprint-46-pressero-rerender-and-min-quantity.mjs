@@ -39,7 +39,9 @@ const visualScript = read("src/public/pressero/visual-configurator.js");
   "scheduleRender",
   "observePresseroRerenders",
   "MutationObserver",
-  "state.observer.observe(document.body",
+  "var host = document.getElementById(\"calcParmInputs\")",
+  "document.getElementById(\"pricingArea\")",
+  "state.observer.observe(host",
   "childList: true",
   "subtree: true"
 ].forEach((needle) => assertIncludes(visualScript, needle, "visual-configurator.js"));
