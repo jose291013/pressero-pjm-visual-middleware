@@ -796,7 +796,7 @@ function buildPresseroOptionsFromPjmResponse(
   config: PricingConfigOptionsRecord,
   optionsResponse: PjmEngineOptionsResponse
 ): PresseroPricingParameter[] {
-  return readPjmOptionsArray(optionsResponse).flatMap((liveOption) => {
+  const parameters = readPjmOptionsArray(optionsResponse).flatMap((liveOption) => {
     const optionId = readPjmOptionId(liveOption);
     if (!optionId) return [];
 
@@ -821,6 +821,13 @@ function buildPresseroOptionsFromPjmResponse(
         optionId,
       Options: choices
     }];
+  });
+
+  return parameters.sort((left, right) => {
+    const leftIsFreeInput = left.Options.length === 0;
+    const rightIsFreeInput = right.Options.length === 0;
+    if (leftIsFreeInput === rightIsFreeInput) return 0;
+    return leftIsFreeInput ? 1 : -1;
   });
 }
 

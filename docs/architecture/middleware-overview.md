@@ -248,3 +248,9 @@ The V22.1 contract remains intact: visual buttons still update real Pressero/PJM
 The PJM client now retries authenticated requests once after a `401` by forcing a fresh token with `authenticate(true)`. This protects Render's long-lived PJM singleton from stale or rejected tokens without requiring admin changes.
 
 The public visual runtime now stores remembered native field selectors and keeps a dynamic CSS sheet for those fields. When Pressero rebuilds the pricing DOM, the native selects are hidden immediately and the visual rerender delay is reduced, preventing the dropdown flash and reducing unwanted scroll jumps.
+
+## Sprint 59 Stable Option Render After Quantity Reorder
+
+The Pressero pricing provider now returns choice-bearing parameters before free-input parameters, so a PJM quantity field with `Options: []` cannot lead the response and prevent later visual choices from rendering in Pressero.
+
+The visual runtime also delays the no-match warning while Pressero is still building native fields. It retries short render cycles before showing `Aucune option visuelle...`, avoiding a false warning during option initialization.

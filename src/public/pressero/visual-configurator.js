@@ -15,6 +15,7 @@
     isRendering: false,
     shieldTimer: null,
     rememberedNativeSelectors: [],
+    noBindingRenderCount: 0,
     lastScroll: {
       left: 0,
       top: 0
@@ -589,10 +590,24 @@
     }
 
     if (!state.bindings.length) {
-      var warning = document.createElement("p");
-      warning.className = "ppv-warning";
-      warning.textContent = "Aucune option visuelle ne correspond aux champs Pressero de cette page.";
-      root.appendChild(warning);
+      state.noBindingRenderCount += 1;
+      if ((config.options || []).length && state.noBindingRenderCount < 25) {
+        root.hidden = true;
+        window.setTimeout(function () {
+          state.isRendering = false;
+          scheduleRender();
+        }, 120);
+        return;
+      }
+
+      if (state.noBindingRenderCount >= 25) {
+        var warning = document.createElement("p");
+        warning.className = "ppv-warning";
+        warning.textContent = "Aucune option visuelle ne correspond aux champs Pressero de cette page.";
+        root.appendChild(warning);
+      }
+    } else {
+      state.noBindingRenderCount = 0;
     }
 
     root.hidden = false;
